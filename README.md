@@ -1,2 +1,2 @@
 # js-client
-The official JavaScript network client SDK
+This is the main Javascript client repository for interacting with the NaeuralEdgeProtocol network.

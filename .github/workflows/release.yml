@@ -1,0 +1,58 @@
+name: Release Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'  # Set your Node.js version
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check if version changed
+        id: version_check
+        run: |
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+          git fetch --tags
+          LAST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+          git show $LAST_TAG:package.json > old_package.json
+          LAST_VERSION=$(node -p "require('./old_package.json').version")
+          rm old_package.json  # Clean up the temporary file
+
+          if [ "$NEW_VERSION" != "$LAST_VERSION" ]; then
+            echo "version_changed=true" >> $GITHUB_ENV
+          else
+            echo "version_changed=false" >> $GITHUB_ENV
+          fi
+
+      - name: Generate changelog
+        if: env.version_changed == 'true'
+        run: |
+          git fetch --tags --force  # Ensure all tags are up to date
+          LAST_TAG=$(git describe --tags --abbrev=0 `git rev-list --tags --max-count=1`)
+          git log ${LAST_TAG}..HEAD --pretty=format:"%h - %s" > CHANGELOG.md
+          echo "Changelog generated"
+
+      - name: Create Release
+        if: env.version_changed == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.NEW_VERSION }}
+          release_name: Release ${{ env.NEW_VERSION }}
+          body_path: CHANGELOG.md
