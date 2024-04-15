@@ -1,0 +1,20 @@
+import {AllowedValues, SchemaDefinition} from "./schema.providers";
+
+export function encode(code: string): Promise<string>;
+export function decode(value: string): Promise<string>;
+export function camelToZxAIFormat(input: string): string;
+export function convertKeysToZxAIFormat(obj: any): any;
+export function zxAIFormatToCamel(key: string): string;
+export function convertKeysToCamelFormat(obj: any): any;
+export function urlSafeBase64ToBase64(urlSafeBase64: string): string;
+export function base64ToUrlSafeBase64(base64: string): string;
+export function pick(path: string, obj: any): undefined | any;
+export function checkType(value: any, type: string, allowedValues: AllowedValues): boolean;
+export function validateAgainstSchema(obj: any, schema: SchemaDefinition | null): Array<string>;
+export function applyDefaultsToObject(obj: any, schema: SchemaDefinition | null, addOptionals?: boolean): any;
+export function checkMandatoryFields(obj: any, schema: SchemaDefinition | null): boolean;
+export function sleep(timeout: number): Promise<unknown>;
+export function hasFleetFilter(fleet: Array<string>): boolean;
+export function IsObject(value: any): boolean;
+export function generateId(): string;
+export function computeDifferences(original: any, modified: any): any | null;

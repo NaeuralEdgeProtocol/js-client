@@ -1,2 +1,4 @@
 # js-client
-The official JavaScript network client SDK
+This is the main Javascript client repository for interacting with the DecentrAI network.
+
+TODO: add readme here

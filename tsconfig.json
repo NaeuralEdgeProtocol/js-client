@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "allowJs": true,
+    "checkJs": false,
+    "allowSyntheticDefaultImports": true,
+    "outDir": "./types",
+    "module": "ES2022",
+    "target": "ES2022",
+    "moduleResolution": "node",
+    "strict": false
+  },
+  "include": ["./src/**/*.js"],
+  "exclude": ["node_modules", "**/*.spec.js"]
+}
