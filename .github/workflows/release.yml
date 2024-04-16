@@ -42,8 +42,9 @@ jobs:
       - name: Generate changelog
         if: env.version_changed == 'true'
         run: |
-          LAST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-          git log $LAST_TAG..HEAD --oneline > CHANGELOG.md
+          git fetch --tags --force  # Ensure all tags are up to date
+          LAST_TAG=$(git describe --tags --abbrev=0 `git rev-list --tags --max-count=1`)
+          git log ${LAST_TAG}..HEAD --pretty=format:"%h - %s" > CHANGELOG.md
           echo "Changelog generated"
 
       - name: Create Release
