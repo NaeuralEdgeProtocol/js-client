@@ -40,8 +40,8 @@ export const decode = (value) => {
 };
 
 /**
- * Helper function that transforms camelCase strings into DecentrAI network specific format.
- * Conventionally, DecentrAI commands have the keys in uppercase with underscore as word separator.
+ * Helper function that transforms camelCase strings into NaeuralEdgeProtocol network specific format.
+ * Conventionally, NaeuralEdgeProtocol commands have the keys in uppercase with underscore as word separator.
  *
  * eg. blockchainKeyPair will be transformed as BLOCKCHAIN_KEY_PAIR
  *
@@ -54,7 +54,7 @@ export const camelToZxAIFormat = (input) => {
 
 /**
  * Helper function for transforming all the keys of the provided generic object into the
- * conventional DecentrAI Network key format.
+ * conventional NaeuralEdgeProtocol Network key format.
  *
  * @param {Object} obj
  * @return {Object}
@@ -73,7 +73,7 @@ export const convertKeysToZxAIFormat = (obj) => {
 };
 
 /**
- * Helper function for transforming an DecentrAI Network conventional OBJECT_KEY into a camel case objectKey.
+ * Helper function for transforming an NaeuralEdgeProtocol Network conventional OBJECT_KEY into a camel case objectKey.
  *
  * @param {string} key
  * @return {string}

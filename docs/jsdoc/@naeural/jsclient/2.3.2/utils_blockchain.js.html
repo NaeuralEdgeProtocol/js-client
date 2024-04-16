@@ -43,7 +43,7 @@ const PKCS8 = asn1.define('PKCS8PrivateKeyInfo', function () {
 /**
  * @class ZxAIBC
  *
- * This is the DecentrAI Network Blockchain engine. Its purpose is to offer any integrator common features like
+ * This is the NaeuralEdgeProtocol Network Blockchain engine. Its purpose is to offer any integrator common features like
  * signature checking, message validation or key pair generation.
  */
 export class ZxAIBC {
@@ -72,7 +72,7 @@ export class ZxAIBC {
     debugMode = false;
 
     /**
-     * DecentrAI Network Blockchain engine constructor.
+     * NaeuralEdgeProtocol Network Blockchain engine constructor.
      *
      * @param {ZxAIBlockchainOptions} options
      */
@@ -87,7 +87,7 @@ export class ZxAIBC {
         this.compressedPublicKey = ZxAIBC.compressPublicKeyObject(this.keyPair.publicKey);
 
         if (this.debugMode) {
-            console.log('DecentrAI Blockchain address: ' + this.getAddress());
+            console.log('NaeuralEdgeProtocol Blockchain address: ' + this.getAddress());
         }
     }
 
@@ -179,9 +179,9 @@ export class ZxAIBC {
     }
 
     /**
-     * Returns the DecentrAI Network blockchain address.
+     * Returns the NaeuralEdgeProtocol Network blockchain address.
      *
-     * @return {string} the DecentrAI Network Address
+     * @return {string} the NaeuralEdgeProtocol Network Address
      */
     getAddress() {
         return ADDR_PREFIX + this.compressedPublicKey;

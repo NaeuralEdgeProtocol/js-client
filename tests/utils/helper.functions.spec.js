@@ -61,8 +61,8 @@ describe('Helper Function Tests', () => {
         });
 
         test('handles input with consecutive small letters', () => {
-            const input = 'DecentrAI';
-            const expectedOutput = 'DECENTR_AI';
+            const input = 'NaeuralEdgeProtocol';
+            const expectedOutput = 'NAEURAL_EDGE_PROTOCOL';
             expect(camelToZxAIFormat(input)).toBe(expectedOutput);
         });
 
@@ -220,7 +220,7 @@ describe('Helper Function Tests', () => {
                 { name: 'Alexandru', age: 4 },
             ],
             class: {
-                name: 'DecentrAI',
+                name: 'NaeuralEdgeProtocol',
                 teacher: {
                     name: 'Radu',
                     age: 37,

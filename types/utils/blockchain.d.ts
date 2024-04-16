@@ -9,7 +9,7 @@
 /**
  * @class ZxAIBC
  *
- * This is the DecentrAI Network Blockchain engine. Its purpose is to offer any integrator common features like
+ * This is the NaeuralEdgeProtocol Network Blockchain engine. Its purpose is to offer any integrator common features like
  * signature checking, message validation or key pair generation.
  */
 export class ZxAIBC {
@@ -32,7 +32,7 @@ export class ZxAIBC {
     static addressToPublicKeyUncompressed(address: any): any;
     static addressToPublicKeyObject(address: any): crypto.KeyObject;
     /**
-     * DecentrAI Network Blockchain engine constructor.
+     * NaeuralEdgeProtocol Network Blockchain engine constructor.
      *
      * @param {ZxAIBlockchainOptions} options
      */
@@ -44,9 +44,9 @@ export class ZxAIBC {
      */
     getPublicKeyDER(): string;
     /**
-     * Returns the DecentrAI Network blockchain address.
+     * Returns the NaeuralEdgeProtocol Network blockchain address.
      *
-     * @return {string} the DecentrAI Network Address
+     * @return {string} the NaeuralEdgeProtocol Network Address
      */
     getAddress(): string;
     exportAsPem(): string | Buffer;

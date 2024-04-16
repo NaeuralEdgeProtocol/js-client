@@ -55,7 +55,7 @@ export class Thread extends EventEmitter2 {
         };
     };
     /**
-     * The DecentrAI Blockchain Engine
+     * The NaeuralEdgeProtocol Blockchain Engine
      *
      * @type {ZxAIBC}
      */

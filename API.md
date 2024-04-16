@@ -27,7 +27,7 @@ when a multi-process instance of the SDK is needed.</p>
 <dd></dd>
 <dt><a href="#ZxAIBC">ZxAIBC</a></dt>
 <dd><p>ZxAIBC</p>
-<p>This is the DecentrAI Network Blockchain engine. Its purpose is to offer any integrator common features like
+<p>This is the NaeuralEdgeProtocol Network Blockchain engine. Its purpose is to offer any integrator common features like
 signature checking, message validation or key pair generation.</p>
 </dd>
 </dl>
@@ -63,16 +63,16 @@ TODO: add link to the internal format docs.</p>
 <p>The reverse process can be obtained with <code>encode(code)</code>;</p>
 </dd>
 <dt><a href="#camelToZxAIFormat">camelToZxAIFormat</a> ⇒ <code>string</code></dt>
-<dd><p>Helper function that transforms camelCase strings into DecentrAI network specific format.
-Conventionally, DecentrAI commands have the keys in uppercase with underscore as word separator.</p>
+<dd><p>Helper function that transforms camelCase strings into NaeuralEdgeProtocol network specific format.
+Conventionally, NaeuralEdgeProtocol commands have the keys in uppercase with underscore as word separator.</p>
 <p>eg. blockchainKeyPair will be transformed as BLOCKCHAIN_KEY_PAIR</p>
 </dd>
 <dt><a href="#convertKeysToZxAIFormat">convertKeysToZxAIFormat</a> ⇒ <code>Object</code></dt>
 <dd><p>Helper function for transforming all the keys of the provided generic object into the
-conventional DecentrAI Network key format.</p>
+conventional NaeuralEdgeProtocol Network key format.</p>
 </dd>
 <dt><a href="#zxAIFormatToCamel">zxAIFormatToCamel</a> ⇒ <code>string</code></dt>
-<dd><p>Helper function for transforming an DecentrAI Network conventional OBJECT_KEY into a camel case objectKey.</p>
+<dd><p>Helper function for transforming an NaeuralEdgeProtocol Network conventional OBJECT_KEY into a camel case objectKey.</p>
 </dd>
 <dt><a href="#convertKeysToCamelFormat">convertKeysToCamelFormat</a> ⇒ <code>Object</code></dt>
 <dd><p>Helper function for transforming all the keys of the provided generic object into the
@@ -263,13 +263,13 @@ Cleans up the transaction handler related to the supplied `path`.
 <a name="ZxAIEventType"></a>
 
 ## ZxAIEventType : <code>enum</code>
-Enum DecentrAI Event Stream Types
+Enum NaeuralEdgeProtocol Event Stream Types
 
 **Kind**: global enum  
 <a name="ZxAIClientEvent"></a>
 
 ## ZxAIClientEvent : <code>enum</code>
-Enum DecentrAI Client Events
+Enum NaeuralEdgeProtocol Client Events
 
 **Kind**: global enum  
 <a name="identityFormatter"></a>
@@ -348,8 +348,8 @@ The reverse process can be obtained with `encode(code)`;
 <a name="camelToZxAIFormat"></a>
 
 ## camelToZxAIFormat ⇒ <code>string</code>
-Helper function that transforms camelCase strings into DecentrAI network specific format.
-Conventionally, DecentrAI commands have the keys in uppercase with underscore as word separator.
+Helper function that transforms camelCase strings into NaeuralEdgeProtocol network specific format.
+Conventionally, NaeuralEdgeProtocol commands have the keys in uppercase with underscore as word separator.
 
 eg. blockchainKeyPair will be transformed as BLOCKCHAIN_KEY_PAIR
 
@@ -363,7 +363,7 @@ eg. blockchainKeyPair will be transformed as BLOCKCHAIN_KEY_PAIR
 
 ## convertKeysToZxAIFormat ⇒ <code>Object</code>
 Helper function for transforming all the keys of the provided generic object into the
-conventional DecentrAI Network key format.
+conventional NaeuralEdgeProtocol Network key format.
 
 **Kind**: global constant  
 
@@ -374,7 +374,7 @@ conventional DecentrAI Network key format.
 <a name="zxAIFormatToCamel"></a>
 
 ## zxAIFormatToCamel ⇒ <code>string</code>
-Helper function for transforming an DecentrAI Network conventional OBJECT_KEY into a camel case objectKey.
+Helper function for transforming an NaeuralEdgeProtocol Network conventional OBJECT_KEY into a camel case objectKey.
 
 **Kind**: global constant  
 

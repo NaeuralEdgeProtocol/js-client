@@ -46,7 +46,7 @@ export class Pipeline {
      */
     instances: PluginInstance[];
     /**
-     * The DecentrAI Edge Node on which this pipeline is running.
+     * The NaeuralEdgeProtocol Edge Node on which this pipeline is running.
      *
      * @type {string}
      * @readonly
@@ -67,7 +67,7 @@ export class Pipeline {
      */
     readonly initiator: string;
     /**
-     * The reference to the DecentrAI Network Client.
+     * The reference to the NaeuralEdgeProtocol Network Client.
      *
      * @type {ZxAIClient}
      * @private
@@ -93,7 +93,7 @@ export class Pipeline {
      */
     getInitiator(): string;
     /**
-     * Returns the name of the DecentrAI Network Node this pipeline runs on.
+     * Returns the name of the NaeuralEdgeProtocol Network Node this pipeline runs on.
      *
      * @return {string}
      */
@@ -105,7 +105,7 @@ export class Pipeline {
      */
     getType(): string;
     /**
-     * Returns the DecentrAI Network Client reference.
+     * Returns the NaeuralEdgeProtocol Network Client reference.
      *
      * @return {ZxAIClient}
      */
@@ -156,7 +156,7 @@ export class Pipeline {
      */
     removeAllInstanceWatches(): Pipeline;
     /**
-     * Sends the provided `command` to the pipeline running on the DecentrAI Node.
+     * Sends the provided `command` to the pipeline running on the NaeuralEdgeProtocol Node.
      *
      * @param {Object} command
      * @return {Promise<*>}

@@ -120,7 +120,7 @@ export class NodeManager {
      */
     updatePipelineMetadata(pipelineOrId: Pipeline | string, metadata: any): Promise<NodeManager>;
     /**
-     * Closes the pipeline by queueing an Archive Config command for the DecentrAI edge node.
+     * Closes the pipeline by queueing an Archive Config command for the NaeuralEdgeProtocol edge node.
      *
      * @param {Pipeline|string} pipelineOrId
      * @return {Promise<NodeManager>}
