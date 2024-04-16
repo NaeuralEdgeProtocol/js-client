@@ -1,4 +1,4 @@
-import {ZxAIClient} from "../client";
+import { ZxAIClient } from "../client";
 
 /**
  * @class Pipeline
@@ -165,4 +165,4 @@ export class Pipeline {
 }
 import { PluginInstance } from './plugin.instance.js';
 import { DataCaptureThread } from './data.capture.thread.js';
-import {SchemasRepository} from "../utils/schema.providers";
+import { SchemasRepository } from "../utils/schema.providers";

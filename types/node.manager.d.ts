@@ -1,4 +1,4 @@
-import {ZxAIClient} from "./client";
+import { ZxAIClient } from "./client";
 import { Logger } from "./app.logger";
 import { ZxAIUpdateInstanceConfig } from "./constants";
 
@@ -41,6 +41,50 @@ export class NodeManager {
      * @return {Promise<ZxAIUpdateInstanceConfig[]>}
      */
     static compilePipelineBatchUpdateInstances(pipeline: Pipeline): Promise<ZxAIUpdateInstanceConfig[]>;
+    /**
+     * The NodeManager constructor.
+     *
+     * @param {ZxAIClient} client
+     * @param {string} node
+     * @param {Logger} logger
+     * @private
+     */
+    private constructor();
+    /**
+     * The network client reference.
+     *
+     * @type {ZxAIClient}
+     * @private
+     */
+    private client;
+    /**
+     * The logger handler to be used for logging messages.
+     *
+     * @type {Logger}
+     * @private
+     */
+    private logger;
+    /**
+     * The node this manager is attached to.
+     *
+     * @type {string}
+     * @private
+     */
+    private node;
+    /**
+     * The list of open Pipelines on this node.
+     *
+     * @type {Array<Pipeline>}
+     * @private
+     */
+    private pipelines;
+    /**
+     * The list of Pipelines to be closed when commiting the pending changes.
+     *
+     * @type {Array<string>}
+     * @private
+     */
+    private pipelinesMarkedForClosing;
     /**
      * Sends a request to restart the node.
      *
@@ -120,7 +164,7 @@ export class NodeManager {
      */
     updatePipelineMetadata(pipelineOrId: Pipeline | string, metadata: any): Promise<NodeManager>;
     /**
-     * Closes the pipeline by queueing an Archive Config command for the NaeuralEdgeProtocol edge node.
+     * Closes the pipeline by queueing an Archive Config command for the NaeuralEdgeProtocol node.
      *
      * @param {Pipeline|string} pipelineOrId
      * @return {Promise<NodeManager>}
@@ -199,6 +243,13 @@ export class NodeManager {
      * @return {Promise<Array<Object>>}
      */
     commit(): Promise<Array<any>>;
+    /**
+     * Returns the pipelines running on this node as they're reflected by the last received heartbeat.
+     *
+     * @return {Promise<Array<Pipeline>>}
+     * @private
+     */
+    private _getRunningPipelines;
 }
 import { Pipeline } from './models/pipeline.js';
 import { PluginInstance } from './models/plugin.instance.js';

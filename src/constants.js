@@ -67,6 +67,7 @@ export const MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE = 'network.request.response';
 export const MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH = 'network.addresses.refresh';
 export const MESSAGE_TYPE_THREAD_MEMORY_USAGE = 'thread.memory.usage';
 export const MESSAGE_TYPE_NETWORK_NODE_DOWN = 'network.node.down';
+export const MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD = 'network.supervisor.payload';
 
 export const REDIS_LOCK_EXPIRATION_TIME = 100;
 export const REDIS_LOCK_MAX_RETRIES = 10;
@@ -106,6 +107,7 @@ export const ZxAI_CLIENT_SHUTDOWN = 'ZxAISHUTDOWN';
 export const ZxAI_EXCEPTION = 'ZxAIEX';
 export const ZxAI_ENGINE_OFFLINE = 'ZxAIEEOFF';
 export const ZxAI_ENGINE_ONLINE = 'ZxAIEEON';
+export const ZxAI_SUPERVISOR_PAYLOAD = 'ZxAISUPERPAY';
 
 // NOTIFICATION TYPES
 export const NOTIFICATION_TYPE_EXCEPTION = 'EXCEPTION';

@@ -280,48 +280,6 @@ export class RedisStateManager extends EventEmitter2 {
     }
 
     /**
-     * Stores the Kubernetes cluster metrics as provided by the supervisor node.
-     *
-     * @param {Object} status
-     * @return {Promise<unknown>}
-     */
-    async saveK8sClusterStatus(status) {
-        const [key, lock] = RedisStateManager.getClusterStatusKeyAndLock();
-        const lockAcquired = await this._waitForLock(lock, REDIS_LOCK_RETRY_INTERVAL, REDIS_LOCK_MAX_RETRIES);
-
-        if (lockAcquired) {
-            try {
-                await this.cache.set(key, JSON.stringify(status), 'EX', 3600 * 24 * 7);
-
-                return true;
-            } catch (error) {
-                this.logger.error(`[Redis State Manager] Error updating Redis key "${key}". Reason: ${error.message}`);
-            } finally {
-                await this.cache.del(lock);
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns the Kubernetes cluster status as observed by the supervisor node.
-     *
-     * @return {Promise<Object>}
-     */
-    async getK8sClusterStatus() {
-        const [key] = RedisStateManager.getClusterStatusKeyAndLock();
-
-        return this.cache.get(key).then((value) => {
-            if (!value || typeof value !== 'string') {
-                return null;
-            }
-
-            return JSON.parse(value);
-        });
-    }
-
-    /**
      * Will store the network snapshot as seen from a specific supervisor node.
      *
      * @param {string} supervisor
@@ -498,15 +456,5 @@ export class RedisStateManager extends EventEmitter2 {
      */
     static getSupervisorKeyAndLock(supervisor) {
         return [`network:snapshot:${supervisor}`, `network:snapshot:${supervisor}:lock`];
-    }
-
-    /**
-     * Returns the cache key and lock name for reading and updating Kubernetes cluster info.
-     *
-     * @return {string[]}
-     * @private
-     */
-    static getClusterStatusKeyAndLock() {
-        return ['k8s:cluster:status', 'k8s:cluster:status:lock'];
     }
 }

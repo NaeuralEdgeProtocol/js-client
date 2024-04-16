@@ -61,10 +61,10 @@ import {
     ALL_EDGE_NODES,
     INTERNAL_STATE_MANAGER,
     MESSAGE_TYPE_HEARTBEAT,
-    MESSAGE_TYPE_K8SCLUSTER_STATUS,
     MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH,
     MESSAGE_TYPE_NETWORK_NODE_DOWN,
     MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
+    MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
     MESSAGE_TYPE_NOTIFICATION,
     MESSAGE_TYPE_OBSERVED_NODE,
     MESSAGE_TYPE_PAYLOAD,
@@ -81,6 +81,7 @@ import {
     STICKY_COMMAND_ID_KEY,
     THREAD_COMMAND_MEMORY_USAGE,
     THREAD_COMMAND_START,
+    ZxAI_SUPERVISOR_PAYLOAD,
 } from './constants.js';
 import { ZxAIBC } from './utils/blockchain.js';
 import { State } from './models/state.js';
@@ -535,8 +536,12 @@ export class ZxAIClient extends EventEmitter2 {
                 case MESSAGE_TYPE_SUPERVISOR_STATUS:
                     state.storeNetworkInfo(message.data);
                     break;
-                case MESSAGE_TYPE_K8SCLUSTER_STATUS:
-                    state.saveK8sClusterStatus(message.data);
+                case MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD:
+                    client.emit(
+                        ZxAI_SUPERVISOR_PAYLOAD,
+                        null, // no error
+                        message.data,
+                    );
                     break;
                 case MESSAGE_TYPE_HEARTBEAT:
                     if (message.success && message.error === null) {
@@ -610,6 +615,7 @@ export class ZxAIClient extends EventEmitter2 {
         this.logger.log(`[Main Thread] Blockchain Address: ${this.zxAIbc.getAddress()}`);
 
         setInterval(() => {
+            // eslint-disable-next-line no-undef
             this.memoryUsageStats.detailed['main-thread'] = process.memoryUsage();
 
             const aggregated = {
@@ -749,16 +755,6 @@ export class ZxAIClient extends EventEmitter2 {
      */
     async getNetworkStatus(supervisor = null) {
         return this.state.getNetworkStatus(supervisor);
-    }
-
-    /**
-     * Returns the Kubernetes cluster status if the network supervisor node is deployed on Kubernetes. Otherwise it
-     * returns null.
-     *
-     * @return {Promise<null|Object>}
-     */
-    getK8sClusterStatus() {
-        return this.state.getK8sClusterStatus();
     }
 
     /**

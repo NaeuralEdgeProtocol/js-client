@@ -119,13 +119,6 @@ export class ZxAIClient extends EventEmitter2 {
      */
     getNetworkStatus(supervisor?: any): Promise<any>;
     /**
-     * Returns the Kubernetes cluster status if the network supervisor node is deployed on Kubernetes. Otherwise it
-     * returns null.
-     *
-     * @return {Promise<null|Object>}
-     */
-    getK8sClusterStatus(): Promise<null | any>;
-    /**
      * Returns a list of all the registered DCT Schemas.
      *
      * @return {Array<AvailableDCTResponse>}
@@ -190,7 +183,7 @@ export class ZxAIClient extends EventEmitter2 {
      */
     getNodeManager(node: any): Promise<NodeManager | null>;
     /**
-     * Method for publishing a message for an NaeuralEdgeProtocol Edge Node.
+     * Method for publishing a message for an NaeuralEdgeProtocol Node.
      *
      * @param {string} node
      * @param {Object} message
@@ -198,6 +191,15 @@ export class ZxAIClient extends EventEmitter2 {
      * @return {Promise<unknown>}
      */
     publish(node: string, message: any, extraWatches?: Array<Array<string>>): Promise<unknown>;
+    /**
+     * Private method for checking if a specified node is in the controlled fleet or if it's heartbeat has been
+     * witnessed.
+     *
+     * @param {string} node
+     * @return {Promise<boolean>}
+     * @private
+     */
+    private _checkNode;
 }
 export type AlertedNodes = {
     [x: string]: number;

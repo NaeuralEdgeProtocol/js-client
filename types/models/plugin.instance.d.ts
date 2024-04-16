@@ -2,10 +2,10 @@ import {Pipeline} from "./pipeline";
 import {SchemaDefinition} from "../utils/schema.providers";
 import {ZxAICommand, ZxAIUpdateInstanceConfig} from "../constants";
 
-export const ID_TAGS: "ID_TAGS";
-export const WORKING_HOURS: "WORKING_HOURS";
-export const LINKED_INSTANCES: "LINKED_INSTANCES";
-export const SINGLE_INSTANCE: "SINGLE_INSTANCE";
+export const ID_TAGS="ID_TAGS";
+export const WORKING_HOURS="WORKING_HOURS";
+export const LINKED_INSTANCES="LINKED_INSTANCES";
+export const SINGLE_INSTANCE="SINGLE_INSTANCE";
 export const reservedKeys: string[];
 /**
  * @class PluginInstance

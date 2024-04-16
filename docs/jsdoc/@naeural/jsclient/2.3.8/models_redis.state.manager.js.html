@@ -16,7 +16,6 @@
 import { generateId, sleep } from '../utils/helper.functions.js';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
 import EventEmitter2 from 'eventemitter2';
-import Redis from 'ioredis';
 
 /**
  * @class RedisStateManager
@@ -283,48 +282,6 @@ export class RedisStateManager extends EventEmitter2 {
     }
 
     /**
-     * Stores the Kubernetes cluster metrics as provided by the supervisor node.
-     *
-     * @param {Object} status
-     * @return {Promise&lt;unknown>}
-     */
-    async saveK8sClusterStatus(status) {
-        const [key, lock] = RedisStateManager.getClusterStatusKeyAndLock();
-        const lockAcquired = await this._waitForLock(lock, REDIS_LOCK_RETRY_INTERVAL, REDIS_LOCK_MAX_RETRIES);
-
-        if (lockAcquired) {
-            try {
-                await this.cache.set(key, JSON.stringify(status), 'EX', 3600 * 24 * 7);
-
-                return true;
-            } catch (error) {
-                this.logger.error(`[Redis State Manager] Error updating Redis key "${key}". Reason: ${error.message}`);
-            } finally {
-                await this.cache.del(lock);
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns the Kubernetes cluster status as observed by the supervisor node.
-     *
-     * @return {Promise&lt;Object>}
-     */
-    async getK8sClusterStatus() {
-        const [key] = RedisStateManager.getClusterStatusKeyAndLock();
-
-        return this.cache.get(key).then((value) => {
-            if (!value || typeof value !== 'string') {
-                return null;
-            }
-
-            return JSON.parse(value);
-        });
-    }
-
-    /**
      * Will store the network snapshot as seen from a specific supervisor node.
      *
      * @param {string} supervisor
@@ -501,16 +458,6 @@ export class RedisStateManager extends EventEmitter2 {
      */
     static getSupervisorKeyAndLock(supervisor) {
         return [`network:snapshot:${supervisor}`, `network:snapshot:${supervisor}:lock`];
-    }
-
-    /**
-     * Returns the cache key and lock name for reading and updating Kubernetes cluster info.
-     *
-     * @return {string[]}
-     * @private
-     */
-    static getClusterStatusKeyAndLock() {
-        return [`k8s:cluster:status`, `k8s:cluster:status:lock`];
     }
 }
 </code></pre></article></section></div></div></div><div class="search-container" id="PkfLWpAbet" style="display:none"><div class="wrapper" id="iCxFxjkHbP"><button class="icon-button search-close-button" id="VjLlGakifb" aria-label="close search"><svg><use xlink:href="#close-icon"></use></svg></button><div class="search-box-c"><svg><use xlink:href="#search-icon"></use></svg> <input type="text" id="vpcKVYIppa" class="search-input" placeholder="Search..." autofocus></div><div class="search-result-c" id="fWwVHRuDuN"><span class="search-result-c-text">Type anything to view search result</span></div></div></div><div class="mobile-menu-icon-container"><button class="icon-button" id="mobile-menu" data-isopen="false" aria-label="menu"><svg><use xlink:href="#menu-icon"></use></svg></button></div><div id="mobile-sidebar" class="mobile-sidebar-container"><div class="mobile-sidebar-wrapper"><a href="/" class="sidebar-title sidebar-title-anchor">Home</a><div class="mobile-nav-links"></div><div class="mobile-sidebar-items-c"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DataCaptureThread.html">DataCaptureThread</a></div><div class="sidebar-section-children"><a href="InternalStateManager.html">InternalStateManager</a></div><div class="sidebar-section-children"><a href="Logger.html">Logger</a></div><div class="sidebar-section-children"><a href="NetworkRequest.html">NetworkRequest</a></div><div class="sidebar-section-children"><a href="NetworkRequestsHandler.html">NetworkRequestsHandler</a></div><div class="sidebar-section-children"><a href="NodeManager.html">NodeManager</a></div><div class="sidebar-section-children"><a href="Pipeline.html">Pipeline</a></div><div class="sidebar-section-children"><a href="PluginInstance.html">PluginInstance</a></div><div class="sidebar-section-children"><a href="RedisStateManager.html">RedisStateManager</a></div><div class="sidebar-section-children"><a href="State.html">State</a></div><div class="sidebar-section-children"><a href="ZxAIBC.html">ZxAIBC</a></div><div class="sidebar-section-children"><a href="ZxAIClient.html">ZxAIClient</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#AlertedNodes">AlertedNodes</a></div><div class="sidebar-section-children"><a href="global.html#AllowedValues">AllowedValues</a></div><div class="sidebar-section-children"><a href="global.html#AvailableDCTResponse">AvailableDCTResponse</a></div><div class="sidebar-section-children"><a href="global.html#AvailableSchemaResponse">AvailableSchemaResponse</a></div><div class="sidebar-section-children"><a href="global.html#Field">Field</a></div><div class="sidebar-section-children"><a href="global.html#IntervalDefinition">IntervalDefinition</a></div><div class="sidebar-section-children"><a href="global.html#IsObject">IsObject</a></div><div class="sidebar-section-children"><a href="global.html#NodeStatus">NodeStatus</a></div><div class="sidebar-section-children"><a href="global.html#ObservedNodes">ObservedNodes</a></div><div class="sidebar-section-children"><a href="global.html#RedisConnectionOptions">RedisConnectionOptions</a></div><div class="sidebar-section-children"><a href="global.html#SchemaCollection">SchemaCollection</a></div><div class="sidebar-section-children"><a href="global.html#SchemaDefinition">SchemaDefinition</a></div><div class="sidebar-section-children"><a href="global.html#SchemasRepository">SchemasRepository</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIBlockchainOptions">ZxAIBlockchainOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientEvent">ZxAIClientEvent</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientOptions">ZxAIClientOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAICommand">ZxAICommand</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIEventType">ZxAIEventType</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIUpdateInstanceConfig">ZxAIUpdateInstanceConfig</a></div><div class="sidebar-section-children"><a href="global.html#applyDefaultsToObject">applyDefaultsToObject</a></div><div class="sidebar-section-children"><a href="global.html#archiveConfigRequestStrategy">archiveConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#base64ToUrlSafeBase64">base64ToUrlSafeBase64</a></div><div class="sidebar-section-children"><a href="global.html#camelToZxAIFormat">camelToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#checkMandatoryFields">checkMandatoryFields</a></div><div class="sidebar-section-children"><a href="global.html#checkType">checkType</a></div><div class="sidebar-section-children"><a href="global.html#computeDifferences">computeDifferences</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToCamelFormat">convertKeysToCamelFormat</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToZxAIFormat">convertKeysToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#dctSchemas">dctSchemas</a></div><div class="sidebar-section-children"><a href="global.html#decode">decode</a></div><div class="sidebar-section-children"><a href="global.html#defaultSchemas">defaultSchemas</a></div><div class="sidebar-section-children"><a href="global.html#encode">encode</a></div><div class="sidebar-section-children"><a href="global.html#generateId">generateId</a></div><div class="sidebar-section-children"><a href="global.html#getRedisConnection">getRedisConnection</a></div><div class="sidebar-section-children"><a href="global.html#hasFleetFilter">hasFleetFilter</a></div><div class="sidebar-section-children"><a href="global.html#identityFormatter">identityFormatter</a></div><div class="sidebar-section-children"><a href="global.html#pick">pick</a></div><div class="sidebar-section-children"><a href="global.html#rawIn">rawIn</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schemas">schemas</a></div><div class="sidebar-section-children"><a href="global.html#sleep">sleep</a></div><div class="sidebar-section-children"><a href="global.html#updateConfigRequestStrategy">updateConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#updatePipelineInstanceRequestStrategy">updatePipelineInstanceRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#urlSafeBase64ToBase64">urlSafeBase64ToBase64</a></div><div class="sidebar-section-children"><a href="global.html#validateAgainstSchema">validateAgainstSchema</a></div><div class="sidebar-section-children"><a href="global.html#zxAIFormatToCamel">zxAIFormatToCamel</a></div></div></div><div class="mobile-navbar-actions"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div></div></div><script type="text/javascript" src="scripts/core.min.js"></script><script src="scripts/search.min.js" defer="defer"></script><script src="scripts/third-party/fuse.js" defer="defer"></script><script type="text/javascript">var tocbotInstance=tocbot.init({tocSelector:"#eed4d2a0bfd64539bb9df78095dec881",contentSelector:".main-content",headingSelector:"h1, h2, h3",hasInnerContainers:!0,scrollContainer:".main-content",headingsOffset:130,onClick:bringLinkToView})</script></body></html>

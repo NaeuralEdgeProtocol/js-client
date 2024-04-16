@@ -21,7 +21,6 @@ export class InternalStateManager extends EventEmitter2 {
      * - other observed nodes (not registered in the working fleet)
      * - pending transactions (updates communicated to the node without any responses)
      * - network status as provided by the network supervisor
-     * - Kubernetes cluster status as provided by the network supervisor (if deployed on Kubernetes)
      *
      * @type {Object}
      * @private
@@ -31,7 +30,6 @@ export class InternalStateManager extends EventEmitter2 {
         pending: {},
         universe: {},
         network: {},
-        clusterStatus: null,
     };
 
     /**
@@ -174,33 +172,6 @@ export class InternalStateManager extends EventEmitter2 {
     async getNodeInfo(node) {
         return new Promise((resolve) => {
             resolve(this.state.hb[node] ? this.state.hb[node].data : null);
-        });
-    }
-
-    // TODO: these methods are relevant only when deploying a central infrastructure on kubernetes. Should be moved.
-
-    /**
-     * Stores the Kubernetes cluster metrics as provided by the supervisor node.
-     *
-     * @param {Object} status
-     * @return {Promise<unknown>}
-     */
-    async saveK8sClusterStatus(status) {
-        this.state.clusterStatus = status;
-
-        return new Promise((resolve) => {
-            resolve(true);
-        });
-    }
-
-    /**
-     * Returns the Kubernetes cluster status as observed by the supervisor node.
-     *
-     * @return {Promise<Object>}
-     */
-    async getK8sClusterStatus() {
-        return new Promise((resolve) => {
-            resolve(this.state.clusterStatus);
         });
     }
 

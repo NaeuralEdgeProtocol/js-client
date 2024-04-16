@@ -73,19 +73,6 @@ export class RedisStateManager extends EventEmitter2 {
      */
     getNodeInfo(node: string): Promise<any>;
     /**
-     * Stores the Kubernetes cluster metrics as provided by the supervisor node.
-     *
-     * @param {Object} status
-     * @return {Promise<unknown>}
-     */
-    saveK8sClusterStatus(status: any): Promise<unknown>;
-    /**
-     * Returns the Kubernetes cluster status as observed by the supervisor node.
-     *
-     * @return {Promise<Object>}
-     */
-    getK8sClusterStatus(): Promise<any>;
-    /**
      * Will store the network snapshot as seen from a specific supervisor node.
      *
      * @param {string} supervisor

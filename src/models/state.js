@@ -314,25 +314,6 @@ export class State extends EventEmitter2 {
     }
 
     /**
-     * Save the current status of the Kubernetes cluster.
-     *
-     * @param status
-     * @return {Promise<Object>}
-     */
-    async saveK8sClusterStatus(status) {
-        return this.manager.saveK8sClusterStatus(status);
-    }
-
-    /**
-     * Returns the last known status of the Kubernetes cluster.
-     *
-     * @return {Promise<Object>}
-     */
-    async getK8sClusterStatus() {
-        return this.manager.getK8sClusterStatus();
-    }
-
-    /**
      * Registers a thread into the InternalStateManager if that is the state manager loaded.
      *
      * @param {string} threadType

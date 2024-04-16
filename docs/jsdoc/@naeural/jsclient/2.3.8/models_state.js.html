@@ -13,8 +13,6 @@
 import { hasFleetFilter } from '../utils/helper.functions.js';
 import { NetworkRequestsHandler } from './network.requests.handler.js';
 import EventEmitter2 from 'eventemitter2';
-import { RedisStateManager } from './redis.state.manager.js';
-import { InternalStateManager } from './internal.state.manager.js';
 
 /**
  * @typedef {Object.&lt;string, number>} ObservedNodes
@@ -315,25 +313,6 @@ export class State extends EventEmitter2 {
 
         // all are older than 30s, return the freshest
         return mostRecent;
-    }
-
-    /**
-     * Save the current status of the Kubernetes cluster.
-     *
-     * @param status
-     * @return {Promise&lt;Object>}
-     */
-    async saveK8sClusterStatus(status) {
-        return this.manager.saveK8sClusterStatus(status);
-    }
-
-    /**
-     * Returns the last known status of the Kubernetes cluster.
-     *
-     * @return {Promise&lt;Object>}
-     */
-    async getK8sClusterStatus() {
-        return this.manager.getK8sClusterStatus();
     }
 
     /**

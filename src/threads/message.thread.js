@@ -28,11 +28,11 @@ import {
     THREAD_TYPE_PAYLOADS,
     THREAD_TYPE_UNKNOWN,
     logLevels,
-    MESSAGE_TYPE_K8SCLUSTER_STATUS,
     MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH,
     THREAD_COMMAND_MEMORY_USAGE,
     MESSAGE_TYPE_THREAD_MEMORY_USAGE,
     MESSAGE_TYPE_NETWORK_NODE_DOWN,
+    MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
 } from '../constants.js';
 import { ZxAIBC } from '../utils/blockchain.js';
 import { hasFleetFilter } from '../utils/helper.functions.js';
@@ -526,6 +526,7 @@ export class Thread extends EventEmitter2 {
             type: MESSAGE_TYPE_THREAD_MEMORY_USAGE,
             success: true,
             error: null,
+            // eslint-disable-next-line no-undef
             data: process.memoryUsage(),
         });
     }
@@ -766,19 +767,27 @@ export class Thread extends EventEmitter2 {
                         }
                     }
 
-                    if (decoded.EE_PAYLOAD_PATH[2]?.toLowerCase() === 'k8s_monitor_01') {
-                        this.mainThread.postMessage({
-                            threadId: this.threadId,
-                            type: MESSAGE_TYPE_K8SCLUSTER_STATUS,
-                            success: true,
-                            error: null,
-                            data: {
-                                supervisor: decoded.EE_PAYLOAD_PATH[0],
-                                status: decoded.DATA.K8S_NODES,
-                                timestamp: decoded.EE_TIMESTAMP,
-                            },
-                        });
-                    }
+                    // if (decoded.EE_PAYLOAD_PATH[2]?.toLowerCase() === 'k8s_monitor_01') {
+                    //     this.mainThread.postMessage({
+                    //         threadId: this.threadId,
+                    //         type: MESSAGE_TYPE_K8SCLUSTER_STATUS,
+                    //         success: true,
+                    //         error: null,
+                    //         data: {
+                    //             supervisor: decoded.EE_PAYLOAD_PATH[0],
+                    //             status: decoded.DATA.K8S_NODES,
+                    //             timestamp: decoded.EE_TIMESTAMP,
+                    //         },
+                    //     });
+                    // }
+
+                    this.mainThread.postMessage({
+                        threadId: this.threadId,
+                        type: MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
+                        success: true,
+                        error: null,
+                        data: decoded.DATA,
+                    });
                 });
             }
         }
