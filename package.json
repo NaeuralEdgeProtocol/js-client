@@ -13,7 +13,7 @@
     "lint": "eslint \"{src,tests}/**/*.js\" --fix",
     "generate:typedefs": "tsc",
     "jsdoc": "jsdoc -a all -c jsdoc.json -r -R README.md ./src/* -d docs/jsdoc",
-    "jsdoc-md": "jsdoc2md --files ./src/models/pipeline.js > docs/API.md"
+    "jsdoc-md": "jsdoc2md --files ./src/models/pipeline.js > ./API.md"
   },
   "author": "DecentrAI Team",
   "bin": {
