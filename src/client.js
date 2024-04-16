@@ -100,7 +100,7 @@ export const HEARTBEATS_STREAM = 'heartbeats';
 export const PAYLOADS_STREAM = 'payloads';
 export const NOTIFICATIONS_STREAM = 'notifications';
 /**
- * Enum DecentrAI Event Stream Types
+ * Enum NaeuralEdgeProtocol Event Stream Types
  * @enum {string}
  */
 export const ZxAIEventType = {
@@ -109,7 +109,7 @@ export const ZxAIEventType = {
     NOTIFICATION: NOTIFICATIONS_STREAM,
 };
 /**
- * Enum DecentrAI Client Events
+ * Enum NaeuralEdgeProtocol Client Events
  * @enum {string}
  */
 export const ZxAIClientEvent = {
@@ -682,9 +682,9 @@ export class ZxAIClient extends EventEmitter2 {
     }
 
     /**
-     * This method returns the DecentrAI Network unique blockchain address.
+     * This method returns the NaeuralEdgeProtocol Network unique blockchain address.
      *
-     * @return {string} DecentrAI Network address
+     * @return {string} NaeuralEdgeProtocol Network address
      */
     getBlockChainAddress() {
         return this.zxAIbc.getAddress();
@@ -878,7 +878,7 @@ export class ZxAIClient extends EventEmitter2 {
     }
 
     /**
-     * Method for publishing a message for an DecentrAI Edge Node.
+     * Method for publishing a message for an NaeuralEdgeProtocol Node.
      *
      * @param {string} node
      * @param {Object} message

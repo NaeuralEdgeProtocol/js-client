@@ -47,7 +47,7 @@ export class PluginInstance {
     signature = null;
 
     /**
-     * The instance config as it is on the Plugin Instance running on the DecentrAI Network node.
+     * The instance config as it is on the Plugin Instance running on the NaeuralEdgeProtocol Network node.
      *
      * @type {Object}
      */
@@ -512,7 +512,7 @@ export class PluginInstance {
     }
 
     /**
-     * Sends a command to the instance running on the DecentrAI Network node.
+     * Sends a command to the instance running on the NaeuralEdgeProtocol Network node.
      *
      * @param {Object} command
      * @return {Promise<Object>}
@@ -522,7 +522,7 @@ export class PluginInstance {
     }
 
     /**
-     * Computes the instance update config by comparing the config running on the DecentrAI Node with the proposed
+     * Computes the instance update config by comparing the config running on the NaeuralEdgeProtocol Node with the proposed
      * configuration stored on the instance model.
      *
      * @return {Promise<ZxAIUpdateInstanceConfig>}
@@ -586,7 +586,7 @@ export class PluginInstance {
     }
 
     /**
-     * Returns the instance command wrapped within an DecentrAI Node command.
+     * Returns the instance command wrapped within an NaeuralEdgeProtocol Node command.
      *
      * @param command
      * @return {ZxAICommand}

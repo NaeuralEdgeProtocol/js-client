@@ -21,7 +21,7 @@ const hexPair = {
     zxAIAddr: ZxAIBC.addressFromPublicKey(keyPair.publicKey),
 };
 
-console.log('=-=-=-=-=-=-=-= DecentrAI Blockchain Address Generator =-=-=-=-=-=-=-=');
+console.log('=-=-=-=-=-=-=-= NaeuralEdgeProtocol Blockchain Address Generator =-=-=-=-=-=-=-=');
 console.log(`   Your Address: ${hexPair.zxAIAddr}`);
 console.log('--------------------------------------------------------------------');
 console.log(`   Your Public Key: ${hexPair.publicKey}`);
