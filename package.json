@@ -17,7 +17,7 @@
   },
   "author": "NaeuralEdgeProtocol Team",
   "bin": {
-    "zxAI": "./src/cli.js"
+    "naeural": "./src/cli.js"
   },
   "contributors": [
     "Radu Lupaescu <radu.lupaescu@gmail.com>"
