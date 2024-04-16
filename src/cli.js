@@ -2,7 +2,6 @@
 import * as process from 'process';
 import fs from 'fs';
 import { ZxAIBC } from './utils/blockchain.js';
-import { ZxAI_CLIENT_CONNECTED } from './constants.js';
 
 const [, , ...args] = process.argv;
 

@@ -14,7 +14,6 @@ import {
 import { generateId, sleep } from '../utils/helper.functions.js';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
 import EventEmitter2 from 'eventemitter2';
-import Redis from 'ioredis';
 
 /**
  * @class RedisStateManager
@@ -508,6 +507,6 @@ export class RedisStateManager extends EventEmitter2 {
      * @private
      */
     static getClusterStatusKeyAndLock() {
-        return [`k8s:cluster:status`, `k8s:cluster:status:lock`];
+        return ['k8s:cluster:status', 'k8s:cluster:status:lock'];
     }
 }

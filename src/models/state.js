@@ -11,8 +11,6 @@ import {
 import { hasFleetFilter } from '../utils/helper.functions.js';
 import { NetworkRequestsHandler } from './network.requests.handler.js';
 import EventEmitter2 from 'eventemitter2';
-import { RedisStateManager } from './redis.state.manager.js';
-import { InternalStateManager } from './internal.state.manager.js';
 
 /**
  * @typedef {Object.<string, number>} ObservedNodes

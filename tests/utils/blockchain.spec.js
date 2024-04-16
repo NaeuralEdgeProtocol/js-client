@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, test } from '@jest/globals';
 import { ZxAIBC } from '../../src/utils/blockchain.js';
-import { ZxAI_CLIENT_CONNECTED } from '../../src/index.js';
 
 describe('NaeuralEdgeProtocol Blockchain Tests', () => {
     let mockNaeuralEdgeProtocolBCEngine;

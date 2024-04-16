@@ -33,7 +33,6 @@ import {
     THREAD_COMMAND_MEMORY_USAGE,
     MESSAGE_TYPE_THREAD_MEMORY_USAGE,
     MESSAGE_TYPE_NETWORK_NODE_DOWN,
-    ZxAI_CLIENT_CONNECTED,
 } from '../constants.js';
 import { ZxAIBC } from '../utils/blockchain.js';
 import { hasFleetFilter } from '../utils/helper.functions.js';
@@ -274,7 +273,7 @@ export class Thread extends EventEmitter2 {
         );
 
         if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
-            this.logger.log(`... configuring Redis state manager`);
+            this.logger.log('... configuring Redis state manager');
 
             this.pubSubChannel = this.startupOptions.redis.pubSubChannel;
             this.cache = getRedisConnection(redisOptions);
@@ -310,19 +309,19 @@ export class Thread extends EventEmitter2 {
                     },
                     (err) => {
                         this.logger.warn(`... error while importing ${formatterName}.`);
-                        this.logger.debug(`... stacktrace: `, err);
+                        this.logger.debug('... stacktrace: ', err);
                     },
                 );
             });
         }
 
-        this.logger.log(`... configuration complete.`);
+        this.logger.log('... configuration complete.');
     }
 
     run(mqttClient) {
         this.mqttClient = mqttClient;
         this.mqttClient.on('connect', () => {
-            this.logger.log(`Successfully connected to MQTT.`);
+            this.logger.log('Successfully connected to MQTT.');
             markBootUpdate('mqtt.connection', true, this.threadId, this.threadType);
             this.mqttClient.subscribe(this.startupOptions.connection.topic, (err) => {
                 if (!err) {
@@ -347,7 +346,7 @@ export class Thread extends EventEmitter2 {
 
             this.subscriptionChannel.subscribe(this.pubSubChannel, (err) => {
                 if (err) {
-                    this.logger.debug(`Redis PubSub Stacktrace:`, err);
+                    this.logger.debug('Redis PubSub Stacktrace:', err);
                     markBootUpdate('redis.topic', false, this.threadId, this.threadType);
                 } else {
                     markBootUpdate('redis.topic', true, this.threadId, this.threadType);
@@ -676,7 +675,7 @@ export class Thread extends EventEmitter2 {
         try {
             stringMessage = message[2].payload.toString('utf-8');
         } catch (e) {
-            this.logger.debug(`Message funnel _bufferToString error:`, e);
+            this.logger.debug('Message funnel _bufferToString error:', e);
         }
 
         return stringMessage;
@@ -839,7 +838,7 @@ export class Thread extends EventEmitter2 {
 
 let thread = null;
 parentPort?.on('message', (message) => {
-    logger.verbose(`Thread received message: `, message);
+    logger.verbose('Thread received message: ', message);
 
     if (message.command === THREAD_COMMAND_START) {
         const startupOptions = message.config;

@@ -1,6 +1,6 @@
 {
   "name": "@naeural/jsclient",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "description": "This is the Javascript client for the NaeuralEdgeProtocol network.",
   "type": "module",
   "main": "./src/index.js",

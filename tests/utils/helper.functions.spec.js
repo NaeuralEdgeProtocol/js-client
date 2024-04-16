@@ -12,7 +12,7 @@ import {
     sleep,
     hasFleetFilter,
 } from '../../src/utils/helper.functions.js';
-import { ALL_EDGE_NODES, ZxAI_CLIENT_CONNECTED } from '../../src/constants.js';
+import { ALL_EDGE_NODES } from '../../src/constants.js';
 
 const pseudopy = `img = plugin.dataapi_image()
 if img is not None:

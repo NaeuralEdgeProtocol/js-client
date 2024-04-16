@@ -81,7 +81,6 @@ import {
     STICKY_COMMAND_ID_KEY,
     THREAD_COMMAND_MEMORY_USAGE,
     THREAD_COMMAND_START,
-    ZxAI_CLIENT_CONNECTED,
 } from './constants.js';
 import { ZxAIBC } from './utils/blockchain.js';
 import { State } from './models/state.js';
@@ -455,6 +454,7 @@ export class ZxAIClient extends EventEmitter2 {
         return (message) => {
             switch (message.type) {
                 case 'LOGGER':
+                    // eslint-disable-next-line no-case-declarations
                     let prefix = '';
                     if (message.threadId !== null) {
                         prefix = `[Thread ${message.threadId}] `;
@@ -486,6 +486,7 @@ export class ZxAIClient extends EventEmitter2 {
                     client.markThreadStatus(message);
                     break;
                 case MESSAGE_TYPE_NETWORK_NODE_DOWN:
+                    // eslint-disable-next-line no-case-declarations
                     const alertedList = message.data;
                     if (Array.isArray(alertedList)) {
                         const currentlyAlerted = [];
@@ -599,11 +600,11 @@ export class ZxAIClient extends EventEmitter2 {
         });
 
         this.mqttClient.on('connect', () => {
-            this.logger.log(`[Main Thread] Successfully connected to MQTT.`);
+            this.logger.log('[Main Thread] Successfully connected to MQTT.');
         });
 
         this.mqttClient.on('error', () => {
-            this.logger.warn(`[Main Thread] Could not connect to MQTT.`);
+            this.logger.warn('[Main Thread] Could not connect to MQTT.');
         });
 
         this.logger.log(`[Main Thread] Blockchain Address: ${this.zxAIbc.getAddress()}`);
@@ -1018,7 +1019,7 @@ export class ZxAIClient extends EventEmitter2 {
             return false;
         }
 
-        if (!!this.alertedNodes[node]) {
+        if (this.alertedNodes[node]) {
             this.logger.error(`[Main Thread] Node ${node} is offline.`);
 
             return false;

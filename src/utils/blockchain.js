@@ -5,7 +5,6 @@ import { base64ToUrlSafeBase64, urlSafeBase64ToBase64 } from './helper.functions
 import { Buffer } from 'node:buffer';
 import elliptic from 'elliptic/lib/elliptic.js';
 import hkdf from 'futoin-hkdf';
-import { ZxAI_CLIENT_CONNECTED } from '../constants.js';
 
 const ec = new elliptic.ec('secp256k1');
 const EE_SIGN = 'EE_SIGN';

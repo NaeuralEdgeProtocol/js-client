@@ -2,7 +2,7 @@ import * as zlib from 'node:zlib';
 import * as util from 'node:util';
 import { Buffer } from 'node:buffer';
 import { v4 as uuidv4 } from 'uuid';
-import { ALL_EDGE_NODES, ZxAI_CLIENT_CONNECTED } from '../constants.js';
+import { ALL_EDGE_NODES } from '../constants.js';
 /*
  * zLib deflate function wrapped as a promise.
  */
@@ -197,7 +197,6 @@ export const checkType = (value, type, allowedValues) => {
             break;
         case 'object':
             return true;
-            break;
         default:
             if (type.startsWith('array(')) {
                 if (!Array.isArray(value)) {
