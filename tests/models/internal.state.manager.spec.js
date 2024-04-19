@@ -43,7 +43,7 @@ describe('InternalStateManager', () => {
 
             const result = await manager.getNodeInfo(nodeName);
 
-            expect(result).toEqual(nodeData);
+            expect(result).toEqual({ data: nodeData });
         });
 
         test('returns null for a non-existing node', async () => {

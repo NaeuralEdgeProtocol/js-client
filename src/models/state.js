@@ -126,7 +126,7 @@ export class State extends EventEmitter2 {
      * @param node
      * @return {Promise<Object>}
      */
-    getNodeInfo(node) {
+    async getNodeInfo(node) {
         return this.manager.getNodeInfo(node);
     }
 
@@ -137,15 +137,13 @@ export class State extends EventEmitter2 {
      * @param {string} pipelineId
      * @return {Promise<Object>}
      */
-    getRunningPipelineConfig(node, pipelineId) {
-        return this.getNodeInfo(node).then((nodeInfo) => {
-            const pipelines = nodeInfo?.data?.pipelines;
-            if (pipelines && pipelines[pipelineId] !== undefined) {
-                return pipelines[pipelineId].config;
-            }
-
-            return null;
-        });
+    async getRunningPipelineConfig(node, pipelineId) {
+        const nodeInfo = await this.getNodeInfo(node);
+        const pipelines = nodeInfo?.data?.pipelines;
+        if (pipelines && pipelines[pipelineId] !== undefined) {
+            return pipelines[pipelineId].config;
+        }
+        return null;
     }
 
     /**
@@ -156,20 +154,18 @@ export class State extends EventEmitter2 {
      * @param {string} instanceId
      * @return {Promise<Object>}
      */
-    getRunningInstanceConfig(node, pipelineId, instanceId) {
-        return this.getNodeInfo(node).then((nodeInfo) => {
-            const pipelines = nodeInfo?.data?.pipelines;
-            if (pipelines && pipelines[pipelineId] !== undefined) {
-                for (const signature of Object.keys(pipelines[pipelineId].plugins)) {
-                    const instance = pipelines[pipelineId].plugins[signature][instanceId];
-                    if (instance) {
-                        return instance.config;
-                    }
+    async getRunningInstanceConfig(node, pipelineId, instanceId) {
+        const nodeInfo = await this.getNodeInfo(node);
+        const pipelines = nodeInfo?.data?.pipelines;
+        if (pipelines && pipelines[pipelineId] !== undefined) {
+            for (const signature of Object.keys(pipelines[pipelineId].plugins)) {
+                const instance = pipelines[pipelineId].plugins[signature][instanceId];
+                if (instance) {
+                    return instance.config;
                 }
             }
-
-            return null;
-        });
+        }
+        return null;
     }
 
     /**

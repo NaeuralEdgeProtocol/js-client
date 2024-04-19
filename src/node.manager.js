@@ -562,10 +562,11 @@ export class NodeManager {
      * @param {PluginInstance} instance
      * @param {Object|Array} schedule - The schedule to set. If an object, it should
      * map days to time intervals. If an array, it applies the same schedule to all days.
+     * @param {string} timezone
      * @returns {NodeManager} The instance of PluginInstance to allow method chaining.
      */
-    setInstanceSchedule(instance, schedule) {
-        instance.setSchedule(schedule);
+    setInstanceSchedule(instance, schedule, timezone = 'UTC+0') {
+        instance.setSchedule(schedule, timezone);
 
         return this;
     }

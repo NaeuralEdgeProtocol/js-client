@@ -62,7 +62,6 @@ export const MESSAGE_TYPE_PAYLOAD = 'PAYLOAD';
 export const MESSAGE_TYPE_NOTIFICATION = 'NOTIFICATION';
 export const MESSAGE_TYPE_OBSERVED_NODE = 'observed.node';
 export const MESSAGE_TYPE_SUPERVISOR_STATUS = 'supervisor.status';
-export const MESSAGE_TYPE_K8SCLUSTER_STATUS = 'k8s.cluster.status';
 export const MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE = 'network.request.response';
 export const MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH = 'network.addresses.refresh';
 export const MESSAGE_TYPE_THREAD_MEMORY_USAGE = 'thread.memory.usage';

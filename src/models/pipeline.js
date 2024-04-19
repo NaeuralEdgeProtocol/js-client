@@ -1,7 +1,7 @@
 import { NODE_COMMAND_PIPELINE_COMMAND, STICKY_COMMAND_ID_KEY } from '../constants.js';
 import { DataCaptureThread } from './data.capture.thread.js';
 import { generateId } from '../utils/helper.functions.js';
-import { ID_TAGS, PluginInstance, WORKING_HOURS } from './plugin.instance.js';
+import {ID_TAGS, PluginInstance, WORKING_HOURS, WORKING_HOURS_TIMEZONE} from './plugin.instance.js';
 import { NodeManager } from '../node.manager.js';
 
 /**
@@ -120,9 +120,11 @@ export class Pipeline {
                 const { config: rawConfig, stats: instanceStats } = plugins[signature][instanceId];
                 const tags = rawConfig[ID_TAGS] ?? {};
                 const schedule = rawConfig[WORKING_HOURS] ?? [];
+                const timezone = rawConfig[WORKING_HOURS_TIMEZONE] ?? 'UTC+0';
 
                 delete rawConfig[ID_TAGS];
                 delete rawConfig[WORKING_HOURS];
+                delete rawConfig[WORKING_HOURS_TIMEZONE];
 
                 const instance = PluginInstance.make(
                     {
@@ -135,6 +137,7 @@ export class Pipeline {
                         schema: schema,
                         tags,
                         schedule,
+                        scheduleTimezone: timezone,
                     },
                     pipeline,
                 );

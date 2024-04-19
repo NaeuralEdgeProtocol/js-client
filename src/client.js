@@ -552,7 +552,7 @@ export class ZxAIClient extends EventEmitter2 {
                     }
                     break;
                 case MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE:
-                    state.onRequestResponseNotification(message);
+                    state.onRequestResponseNotification(state, message);
                     break;
                 case MESSAGE_TYPE_NOTIFICATION:
                     // TODO: should emit EXCEPTIONS and ABNORMAL FUNCTIONING

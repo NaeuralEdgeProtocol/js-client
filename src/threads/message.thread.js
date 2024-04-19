@@ -462,7 +462,7 @@ export class Thread extends EventEmitter2 {
                             const stickyId = data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY];
                             const receiver = this.stickySessions[stickyId];
 
-                            if (receiver) {
+                            if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
                                 this.publishChannel.publish(
                                     receiver,
                                     JSON.stringify({
@@ -672,7 +672,7 @@ export class Thread extends EventEmitter2 {
      *************************************/
 
     _bufferToString(message) {
-        let stringMessage = "{ EE_FORMATTER: 'ignore-this'}";
+        let stringMessage = '{ EE_FORMATTER: \'ignore-this\'}';
         try {
             stringMessage = message[2].payload.toString('utf-8');
         } catch (e) {
@@ -766,20 +766,6 @@ export class Thread extends EventEmitter2 {
                             });
                         }
                     }
-
-                    // if (decoded.EE_PAYLOAD_PATH[2]?.toLowerCase() === 'k8s_monitor_01') {
-                    //     this.mainThread.postMessage({
-                    //         threadId: this.threadId,
-                    //         type: MESSAGE_TYPE_K8SCLUSTER_STATUS,
-                    //         success: true,
-                    //         error: null,
-                    //         data: {
-                    //             supervisor: decoded.EE_PAYLOAD_PATH[0],
-                    //             status: decoded.DATA.K8S_NODES,
-                    //             timestamp: decoded.EE_TIMESTAMP,
-                    //         },
-                    //     });
-                    // }
 
                     this.mainThread.postMessage({
                         threadId: this.threadId,

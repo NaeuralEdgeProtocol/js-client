@@ -10,9 +10,10 @@ import {
 
 export const ID_TAGS = 'ID_TAGS';
 export const WORKING_HOURS = 'WORKING_HOURS';
+export const WORKING_HOURS_TIMEZONE = 'WORKING_HOURS_TIMEZONE';
 export const LINKED_INSTANCES = 'LINKED_INSTANCES';
 export const SINGLE_INSTANCE = 'SINGLE_INSTANCE';
-export const reservedKeys = [ID_TAGS, WORKING_HOURS, LINKED_INSTANCES, SINGLE_INSTANCE];
+export const reservedKeys = [ID_TAGS, WORKING_HOURS, WORKING_HOURS_TIMEZONE, LINKED_INSTANCES, SINGLE_INSTANCE];
 
 /**
  * @class PluginInstance
@@ -73,6 +74,14 @@ export class PluginInstance {
      * @type {Object}
      */
     schedule = {};
+
+    /**
+     * The instance schedule timezone.
+     *
+     * @type {string}
+     * @private
+     */
+    scheduleTimezone = 'UTC+0';
 
     /**
      * Flag for signalling if this particular instance is outside its configured working schedule.
@@ -161,7 +170,7 @@ export class PluginInstance {
             cleanConfig = applyDefaultsToObject(cleanConfig, schema);
             if (!checkMandatoryFields(cleanConfig, schema)) {
                 throw new Error(
-                    "Mandatory fields are missing from the plugin instance configuration. Couldn't properly instantiate.",
+                    'Mandatory fields are missing from the plugin instance configuration. Couldn\'t properly instantiate.',
                 );
             }
 
@@ -174,7 +183,7 @@ export class PluginInstance {
         const instance = new PluginInstance(useId, setup.signature, cleanConfig, schema, setup.dirty ?? false)
             .updateStats(setup.stats ?? null)
             .bulkSetTags(setup.tags ?? {})
-            .setSchedule(setup.schedule, !setup.dirty);
+            .setSchedule(setup.schedule, setup.scheduleTimezone, !setup.dirty);
 
         if (pipeline) {
             instance.setPipeline(pipeline);
@@ -464,13 +473,15 @@ export class PluginInstance {
      *
      * @param {Object|Array} schedule - The schedule to set. If an object, it should
      * map days to time intervals. If an array, it applies the same schedule to all days.
+     * @param {string} timezone The schedule timezone.
      * @param {boolean} dontMarkDirty
      *
      * @returns {PluginInstance} The instance of PluginInstance to allow method chaining.
      */
-    setSchedule(schedule, dontMarkDirty = false) {
+    setSchedule(schedule, timezone = 'UTC+0', dontMarkDirty = false) {
         this._validateSchedule(schedule);
         this.schedule = schedule;
+        this.scheduleTimezone = timezone;
         this.isDirty = !dontMarkDirty;
 
         return this;
@@ -566,6 +577,7 @@ export class PluginInstance {
             (IsObject(this.schedule) && Object.keys(this.schedule).length > 0)
         ) {
             config[WORKING_HOURS] = this.schedule;
+            config[WORKING_HOURS_TIMEZONE] = this.scheduleTimezone;
         } else {
             config[WORKING_HOURS] = [];
         }

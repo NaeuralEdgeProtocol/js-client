@@ -171,7 +171,7 @@ export class InternalStateManager extends EventEmitter2 {
      */
     async getNodeInfo(node) {
         return new Promise((resolve) => {
-            resolve(this.state.hb[node] ? this.state.hb[node].data : null);
+            resolve(this.state.hb[node] !== undefined ? this.state.hb[node] : null);
         });
     }
 

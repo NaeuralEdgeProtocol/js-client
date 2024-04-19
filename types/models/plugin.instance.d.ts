@@ -4,6 +4,7 @@ import {ZxAICommand, ZxAIUpdateInstanceConfig} from "../constants";
 
 export const ID_TAGS="ID_TAGS";
 export const WORKING_HOURS="WORKING_HOURS";
+export const WORKING_HOURS_TIMEZONE="WORKING_HOURS_TIMEZONE";
 export const LINKED_INSTANCES="LINKED_INSTANCES";
 export const SINGLE_INSTANCE="SINGLE_INSTANCE";
 export const reservedKeys: string[];
@@ -77,6 +78,12 @@ export class PluginInstance {
      * @type {Object}
      */
     schedule: any;
+    /**
+     * The instance schedule timezone.
+     *
+     * @type {string}
+     */
+    scheduleTimezone: any;
     /**
      * Flag for signalling if this particular instance is outside its configured working schedule.
      *
@@ -257,11 +264,12 @@ export class PluginInstance {
      *
      * @param {Object|Array} schedule - The schedule to set. If an object, it should
      * map days to time intervals. If an array, it applies the same schedule to all days.
+     * @param {string} timezone
      * @param {boolean} dontMarkDirty
      *
      * @returns {PluginInstance} The instance of PluginInstance to allow method chaining.
      */
-    setSchedule(schedule: any | any[], dontMarkDirty?: boolean): PluginInstance;
+    setSchedule(schedule: any | any[], timezone?: string, dontMarkDirty?: boolean): PluginInstance;
     /**
      * Method for updating the running stats on this instance.
      *
