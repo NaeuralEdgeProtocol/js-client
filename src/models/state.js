@@ -260,6 +260,15 @@ export class State extends EventEmitter2 {
     }
 
     /**
+     * Get the list of observed supervisor nodes.
+     *
+     * @return {Promise<string[]>}
+     */
+    async getNetworkSupervisors() {
+        return this.manager.getNetworkSupervisors();
+    }
+
+    /**
      * Returns the network as seen by the `supervisor` node.
      *
      * @param {string} supervisor

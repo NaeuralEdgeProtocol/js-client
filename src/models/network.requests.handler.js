@@ -15,6 +15,8 @@ import {
     PLUGIN_CONFIG_IN_PAUSE_FAILED,
     PLUGIN_CONFIG_IN_PAUSE_OK,
     PLUGIN_FAILED,
+    PLUGIN_INSTANCE_COMMAND_FAILED,
+    PLUGIN_INSTANCE_COMMAND_OK,
     PLUGIN_OK,
     PLUGIN_PAUSE_FAILED,
     PLUGIN_PAUSE_OK,
@@ -84,6 +86,7 @@ const updateConfigRequestStrategy = (notification, request) => {
 const updatePipelineInstanceRequestStrategy = (notification, request) => {
     switch (notification.context.metadata.NOTIFICATION_CODE) {
         case PLUGIN_OK:
+        case PLUGIN_INSTANCE_COMMAND_OK:
         case PLUGIN_RESUME_OK:
         case PLUGIN_PAUSE_OK:
         case PLUGIN_WORKING_HOURS_SHIFT_START:
@@ -92,6 +95,7 @@ const updatePipelineInstanceRequestStrategy = (notification, request) => {
             request.resolve();
             break;
         case PLUGIN_FAILED:
+        case PLUGIN_INSTANCE_COMMAND_FAILED:
         case PLUGIN_RESUME_FAILED:
         case PLUGIN_PAUSE_FAILED:
         case PLUGIN_WORKING_HOURS_SHIFT_START_FAILED:

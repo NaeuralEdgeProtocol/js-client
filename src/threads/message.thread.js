@@ -379,88 +379,85 @@ export class Thread extends EventEmitter2 {
             )
             .subscribe((message) => {
                 const context = this._makeContext(message.EE_PAYLOAD_PATH);
-                if (context === null && message.EE_EVENT_TYPE !== MESSAGE_TYPE_HEARTBEAT) {
-                    // TODO: buffer notifs & payloads without context
-                } else {
-                    let data = message;
+                let data = message;
 
-                    // route heartbeats as they come
-                    if (this.threadType === THREAD_TYPE_HEARTBEATS) {
-                        this.mainThread.postMessage({
-                            threadId: this.threadId,
-                            type: message.EE_EVENT_TYPE,
-                            success: true,
-                            error: null,
-                            data: data,
-                            context,
-                        });
+                // route heartbeats as they come
+                if (this.threadType === THREAD_TYPE_HEARTBEATS) {
+                    this.mainThread.postMessage({
+                        threadId: this.threadId,
+                        type: message.EE_EVENT_TYPE,
+                        success: true,
+                        error: null,
+                        data: data,
+                        context,
+                    });
 
-                        return;
-                    }
+                    return;
+                }
 
-                    // build the data and the context for this message
-                    data = { ...message.DATA };
-                    delete message.DATA;
-                    context.metadata = message;
-                    context.metadata['SESSION_ID'] = data['SESSION_ID'];
+                // build the data and the context for this message
+                data = { ...message.DATA };
+                delete message.DATA;
+                context.metadata = message;
+                context.metadata['SESSION_ID'] = data['SESSION_ID'];
 
-                    // add notification metadata to context
-                    if (message.EE_EVENT_TYPE === MESSAGE_TYPE_NOTIFICATION) {
-                        context.metadata['NOTIFICATION_CODE'] = data['NOTIFICATION_CODE'];
-                        context.metadata['NOTIFICATION_TAG'] = data['NOTIFICATION_TAG'];
-                        context.metadata['NOTIFICATION_TYPE'] = data['NOTIFICATION_TYPE'];
-                    }
+                // add notification metadata to context
+                if (message.EE_EVENT_TYPE === MESSAGE_TYPE_NOTIFICATION) {
+                    context.metadata['NOTIFICATION_CODE'] = data['NOTIFICATION_CODE'];
+                    context.metadata['NOTIFICATION_TAG'] = data['NOTIFICATION_TAG'];
+                    context.metadata['NOTIFICATION_TYPE'] = data['NOTIFICATION_TYPE'];
+                }
 
-                    const sessionId = context.metadata.SESSION_ID;
-                    const path = context.metadata.EE_PAYLOAD_PATH.join(':');
+                const sessionId = context.metadata.SESSION_ID;
+                const path = context.metadata.EE_PAYLOAD_PATH.join(':');
 
-                    // for notifications, route responses to expecting inboxes for transaction handling
-                    // then bubble the notification for the consumer
-                    if (this.threadType === THREAD_TYPE_NOTIFICATIONS) {
-                        // notification is relevant for another thread
-                        if ((sessionId !== null && !!this.watchlist[sessionId]) || !!this.watchlist[path]) {
-                            if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
-                                const receivers = this.watchlist[sessionId]
-                                    ? [this.watchlist[sessionId]]
-                                    : this.watchlist[path];
-                                receivers.forEach((receiver) => {
-                                    this.publishChannel.publish(
-                                        receiver,
-                                        JSON.stringify({
-                                            type: MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
-                                            data: data,
-                                            context,
-                                        }),
-                                    );
-                                });
-                            } else {
-                                this.mainThread.postMessage({
-                                    threadId: this.threadId,
-                                    type: MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
-                                    success: true,
-                                    error: null,
-                                    data: data,
-                                    context,
-                                });
-                            }
+                // for notifications, route responses to expecting inboxes for transaction handling
+                // then bubble the notification for the consumer
+                if (this.threadType === THREAD_TYPE_NOTIFICATIONS) {
+                    // notification is relevant for another thread
+                    if ((sessionId !== null && !!this.watchlist[sessionId]) || !!this.watchlist[path]) {
+                        if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
+                            const receivers = this.watchlist[sessionId]
+                                ? [this.watchlist[sessionId]]
+                                : this.watchlist[path];
+                            receivers.forEach((receiver) => {
+                                this.publishChannel.publish(
+                                    receiver,
+                                    JSON.stringify({
+                                        type: MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
+                                        data: data,
+                                        context,
+                                    }),
+                                );
+                            });
+                        } else {
+                            this.mainThread.postMessage({
+                                threadId: this.threadId,
+                                type: MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
+                                success: true,
+                                error: null,
+                                data: data,
+                                context,
+                            });
                         }
-
-                        this.mainThread.postMessage({
-                            threadId: this.threadId,
-                            type: message.EE_EVENT_TYPE,
-                            success: true,
-                            error: null,
-                            data: data,
-                            context,
-                        });
-
-                        return;
                     }
 
-                    if (this.threadType === THREAD_TYPE_PAYLOADS) {
-                        if (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) {
-                            const stickyId = data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY];
-                            const receiver = this.stickySessions[stickyId];
+                    this.mainThread.postMessage({
+                        threadId: this.threadId,
+                        type: message.EE_EVENT_TYPE,
+                        success: true,
+                        error: null,
+                        data: data,
+                        context,
+                    });
+
+                    return;
+                }
+
+                if (this.threadType === THREAD_TYPE_PAYLOADS) {
+                    if (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) {
+                        const stickyId = data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY];
+                        const receiver = this.stickySessions[stickyId];
 
                             if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
                                 this.publishChannel.publish(
@@ -475,19 +472,18 @@ export class Thread extends EventEmitter2 {
                                     }),
                                 );
 
-                                return;
-                            }
+                            return;
                         }
-
-                        this.mainThread.postMessage({
-                            threadId: this.threadId,
-                            type: message.EE_EVENT_TYPE,
-                            success: true,
-                            error: null,
-                            data: data,
-                            context,
-                        });
                     }
+
+                    this.mainThread.postMessage({
+                        threadId: this.threadId,
+                        type: message.EE_EVENT_TYPE,
+                        success: true,
+                        error: null,
+                        data: data,
+                        context,
+                    });
                 }
             });
     }
@@ -496,23 +492,23 @@ export class Thread extends EventEmitter2 {
         this.logger.debug(`Received command "${command}"`);
 
         switch (command) {
-            case THREAD_COMMAND_UPDATE_FLEET:
-                this._updateFleet(message);
-                break;
-            case THREAD_COMMAND_UPDATE_STATE:
-                this._updateState(message);
-                break;
-            case THREAD_COMMAND_WATCH_FOR_SESSION_ID:
-                this._watchForSessionId(message);
-                break;
-            case THREAD_COMMAND_IGNORE_SESSION_ID:
-                this._ignoreSessionId(message);
-                break;
-            case THREAD_COMMAND_WATCH_FOR_STICKY_SESSION_ID:
-                this._watchForStickySessionId(message);
-                break;
-            case THREAD_COMMAND_MEMORY_USAGE:
-                this._reportMemoryUsage();
+        case THREAD_COMMAND_UPDATE_FLEET:
+            this._updateFleet(message);
+            break;
+        case THREAD_COMMAND_UPDATE_STATE:
+            this._updateState(message);
+            break;
+        case THREAD_COMMAND_WATCH_FOR_SESSION_ID:
+            this._watchForSessionId(message);
+            break;
+        case THREAD_COMMAND_IGNORE_SESSION_ID:
+            this._ignoreSessionId(message);
+            break;
+        case THREAD_COMMAND_WATCH_FOR_STICKY_SESSION_ID:
+            this._watchForStickySessionId(message);
+            break;
+        case THREAD_COMMAND_MEMORY_USAGE:
+            this._reportMemoryUsage();
         }
     }
 
@@ -610,26 +606,20 @@ export class Thread extends EventEmitter2 {
             metadata: null,
         };
 
-        if (!this.state[path[0]]) {
-            return null;
-        }
-
         if (path[1] !== null) {
             // needs pipeline context
-            const pipeline = this.state[path[0]][path[1]] ? this.state[path[0]][path[1]] : null;
-            if (!pipeline) {
-                return null;
+            const pipeline = this.state[path[0]] && this.state[path[0]][path[1]] ? this.state[path[0]][path[1]] : null;
+            if (pipeline) {
+                context.pipeline = {
+                    name: path[1],
+                    type: pipeline.config.TYPE,
+                    config: { ...pipeline.config },
+                    stats: { ...pipeline.stats },
+                    pluginsCount: Object.keys(pipeline.plugins)
+                        .map((signature) => Object.keys(pipeline.plugins[signature]).length)
+                        .reduce((r, v) => r + v, 0),
+                };
             }
-
-            context.pipeline = {
-                name: path[1],
-                type: pipeline.config.TYPE,
-                config: { ...pipeline.config },
-                stats: { ...pipeline.stats },
-                pluginsCount: Object.keys(pipeline.plugins)
-                    .map((signature) => Object.keys(pipeline.plugins[signature]).length)
-                    .reduce((r, v) => r + v, 0),
-            };
         }
 
         if (path[2] !== null && path[3] !== null) {
@@ -637,8 +627,9 @@ export class Thread extends EventEmitter2 {
             const signature = path[2];
             const instanceId = path[3];
             const instance =
-                !!this.state[path[0]][path[1]].plugins[signature] &&
-                !!this.state[path[0]][path[1]].plugins[signature][instanceId]
+                !!this.state[path[0]] &&
+                !!this.state[path[0]][path[1]]?.plugins[signature] &&
+                !!this.state[path[0]][path[1]]?.plugins[signature][instanceId]
                     ? this.state[path[0]][path[1]].plugins[signature][instanceId]
                     : null;
 
@@ -767,12 +758,29 @@ export class Thread extends EventEmitter2 {
                         }
                     }
 
+                    const context = {
+                        metadata: {},
+                        pipeline: {},
+                        instance: {},
+                    };
+                    const data = { ...decoded.DATA };
+                    delete decoded.DATA;
+                    context.metadata = decoded;
+                    context.metadata['SESSION_ID'] = data['SESSION_ID'];
+                    context.pipeline = {
+                        name: context.metadata.EE_PAYLOAD_PATH[1],
+                    };
+                    context.instance = {
+                        name: context.metadata.EE_PAYLOAD_PATH[3],
+                    };
+
                     this.mainThread.postMessage({
                         threadId: this.threadId,
                         type: MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
                         success: true,
                         error: null,
-                        data: decoded.DATA,
+                        data: data,
+                        context: context,
                     });
                 });
             }

@@ -3,7 +3,7 @@ import asn1 from 'asn1.js/lib/asn1.js';
 import stringify from 'json-stable-stringify';
 import { base64ToUrlSafeBase64, urlSafeBase64ToBase64 } from './helper.functions.js';
 import { Buffer } from 'node:buffer';
-import elliptic from 'elliptic/lib/elliptic.js';
+import elliptic from 'elliptic';
 import hkdf from 'futoin-hkdf';
 
 const ec = new elliptic.ec('secp256k1');
@@ -188,6 +188,19 @@ export class ZxAIBC {
         return this.keyPair.privateKey.export({ type: 'pkcs8', format: 'pem' });
     }
 
+    static loadFromPem(pem) {
+        try {
+            return crypto.createPrivateKey({
+                key: pem,
+                format: 'pem',
+                type: 'pkcs8'
+            });
+        } catch (error) {
+            console.error('Failed to load private key from PEM:', error);
+            throw new Error('Invalid PEM format or corrupted key data.');
+        }
+    }
+
     /**
      * Returns the signed input object with all the cryptographical metadata appended to it. The format can be either
      * `json` or `object` and it allows the caller to select the format of the returned value.
@@ -197,7 +210,7 @@ export class ZxAIBC {
      * @return {string|any} the signed input
      */
     sign(input, format = 'json') {
-        const { binHash } = this._getHash(input);
+        const { binHash, strHash } = this._getHash(input);
         const signatureB64 = this._signHash(binHash);
 
         return this._prepareMessage(input, signatureB64, format);
@@ -239,7 +252,7 @@ export class ZxAIBC {
                     '  Received: ' + receivedHash + '\n',
                     '  Public key:' + pkB64 + '\n',
                     '  Data: ' + JSON.stringify(objData) + '\n',
-                    "  Stringify: '" + strData + "'",
+                    '  Stringify: \'' + strData + '\'',
                 );
             }
         } else {
@@ -248,8 +261,14 @@ export class ZxAIBC {
 
         if (pkB64) {
             const signatureBuffer = Buffer.from(urlSafeBase64ToBase64(signatureB64), 'base64');
-
             const publicKeyObj = ZxAIBC.addressToPublicKeyObject(pkB64);
+
+
+            const ecKeyPair = ZxAIBC.publicKeyObjectToECKeyPair(publicKeyObj);
+            const rehash = Buffer.from(crypto.createHash('sha256').update(hash).digest('hex'), 'hex');
+            const ver = ecKeyPair.verify([...rehash], [...signatureBuffer]); // Elliptic Curve verify
+
+            // console.log('VER!!!!', ver);
 
             signatureResult = crypto.verify(
                 null,
@@ -392,12 +411,7 @@ export class ZxAIBC {
      * @private
      */
     _signHash(binHash) {
-        const signature = crypto.sign(null, binHash, {
-            key: this._getPrivateKey(),
-            format: 'der',
-            type: 'pkcs8',
-        });
-
+        const signature = crypto.sign(null, binHash, this._getPrivateKey());
         return base64ToUrlSafeBase64(signature.toString('base64'));
     }
 

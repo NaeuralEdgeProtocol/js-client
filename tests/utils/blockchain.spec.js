@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test } from '@jest/globals';
 import { ZxAIBC } from '../../src/utils/blockchain.js';
+import {Buffer} from 'node:buffer';
 
 describe('NaeuralEdgeProtocol Blockchain Tests', () => {
     let mockNaeuralEdgeProtocolBCEngine;
@@ -11,6 +12,24 @@ describe('NaeuralEdgeProtocol Blockchain Tests', () => {
         });
     });
 
+    test('exportAsPem', () => {
+        const pem = mockNaeuralEdgeProtocolBCEngine.exportAsPem();
+        const loadedKeyObject = ZxAIBC.loadFromPem(pem);
+        const loadedECKeyPair = ZxAIBC.privateKeyObjectToECKeyPair(loadedKeyObject);
+
+        expect(loadedECKeyPair.getPrivate('hex')).toEqual('54bf5b9c2e0df0bcb2bbfc250df7a561b3443562851800d087434af937bec0ff');
+        expect(loadedKeyObject
+            .export({ type: 'pkcs8', format: 'der'})
+            .toString('hex')
+        )
+        .toEqual(mockNaeuralEdgeProtocolBCEngine
+            .keyPair
+            .privateKey
+            .export({ type: 'pkcs8', format: 'der'})
+            .toString('hex')
+        );
+    });
+
     test('sign', () => {
         const message = {
             SERVER: 'gts-test',
@@ -18,16 +37,25 @@ describe('NaeuralEdgeProtocol Blockchain Tests', () => {
             PAYLOAD: { GIGI: 'BUNA' },
         };
 
-        let messageToSend = JSON.parse(mockNaeuralEdgeProtocolBCEngine.sign(message));
+        const result = mockNaeuralEdgeProtocolBCEngine.sign(message);
+        let messageToSend = JSON.parse(result);
 
         expect(messageToSend['EE_SIGN']).not.toBeNull();
         expect(messageToSend['EE_HASH']).toEqual('feca4c4882b2b0cfb872c73bda948b77048ced67b9eeae10c8bdd9028f9d20a1');
         expect(messageToSend['EE_SENDER']).toEqual('0xai_A3vtcVIv_yL7k945IuhNjLUXKj2DPvbapoH4D6ZairfT');
+
+        expect(mockNaeuralEdgeProtocolBCEngine.verify(result)).toBe(true);
     });
 
     test('verify with good signature, 0xai_ address prefix', () => {
-        const receivedMessage =
-            '{"SERVER": "gigi", "COMMAND": "get", "PARAMS": "1", "EE_SENDER": "0xai_AsteqC-MZKBK6JCkSxfM-kU46AV0MP6MxiB4K1XAcjzo", "EE_SIGN": "MEQCIBML0hRjJtzKJnaZhLwki2awVTNKE_-TanMrapmkpsI2AiADjkUb8TuKCtysAIfBwKwwPzys-48X6zB9HyINJzGzPQ==", "EE_HASH": "e00e86d172c160edc66177b0c4cbc464ababc2f1827433789e68322c6eb766ed"}';
+        const receivedMessage = `{
+            "SERVER": "gigi",
+            "COMMAND": "get",
+            "PARAMS": "1",
+            "EE_SENDER": "0xai_AsteqC-MZKBK6JCkSxfM-kU46AV0MP6MxiB4K1XAcjzo",
+            "EE_SIGN": "MEQCIBML0hRjJtzKJnaZhLwki2awVTNKE_-TanMrapmkpsI2AiADjkUb8TuKCtysAIfBwKwwPzys-48X6zB9HyINJzGzPQ==",
+            "EE_HASH": "e00e86d172c160edc66177b0c4cbc464ababc2f1827433789e68322c6eb766ed"
+        }`;
 
         expect(mockNaeuralEdgeProtocolBCEngine.verify(receivedMessage)).toBe(true);
     });

@@ -541,6 +541,7 @@ export class ZxAIClient extends EventEmitter2 {
                         ZxAI_SUPERVISOR_PAYLOAD,
                         null, // no error
                         message.data,
+                        message.context,
                     );
                     break;
                 case MESSAGE_TYPE_HEARTBEAT:
@@ -755,6 +756,15 @@ export class ZxAIClient extends EventEmitter2 {
      */
     async getNetworkStatus(supervisor = null) {
         return this.state.getNetworkStatus(supervisor);
+    }
+
+    /**
+     * Get the list of network supervisors.
+     *
+     * @return {Promise<string[]>}
+     */
+    async getSupervisors() {
+        return this.state.getNetworkSupervisors();
     }
 
     /**
