@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, test } from '@jest/globals';
 import { ZxAIBC } from '../../src/utils/blockchain.js';
 import {Buffer} from 'node:buffer';
+import * as crypto from 'crypto';
+
 
 describe('NaeuralEdgeProtocol Blockchain Tests', () => {
     let mockNaeuralEdgeProtocolBCEngine;
@@ -9,6 +11,7 @@ describe('NaeuralEdgeProtocol Blockchain Tests', () => {
         mockNaeuralEdgeProtocolBCEngine = new ZxAIBC({
             debug: false,
             key: '308184020100301006072a8648ce3d020106052b8104000a046d306b020101042054bf5b9c2e0df0bcb2bbfc250df7a561b3443562851800d087434af937bec0ffa144034200047bed71522fff22fb93de3922e84d8cb5172a3d833ef6daa681f80fa65a8ab7d3c4183504b4b2b1ff390e6c62dca4109a4851e7588cfb19bf427a8dffd539102f',
+            // key: '                                                 306b020101042054bf5b9c2e0df0bcb2bbfc250df7a561b3443562851800d087434af937bec0ffa144034200047bed71522fff22fb93de3922e84d8cb5172a3d833ef6daa681f80fa65a8ab7d3c4183504b4b2b1ff390e6c62dca4109a4851e7588cfb19bf427a8dffd539102f'
         });
     });
 
@@ -109,5 +112,64 @@ describe('NaeuralEdgeProtocol Blockchain Tests', () => {
         const data = mockNaeuralEdgeProtocolBCEngine.decrypt(asObject['ENCRYPTED_DATA'], asObject['EE_SENDER']);
 
         expect(data).toEqual('{"value": "Hello World"}');
+    });
+
+    test('Get Random Words', () => {
+        const numWords = 10;
+        let words = ZxAIBC.generateRandomWords(numWords);
+
+        words = words.filter((item, index) => words.indexOf(item) === index);
+        expect(words.length).toEqual(numWords);
+    });
+
+    test('Generate From Secret Words', () => {
+        const words = ['Naeural', 'is', 'the', 'best', 'AI', 'and', 'blockchain', 'integration'];
+        const pem = ZxAIBC.convertECKeyPairToPEM(ZxAIBC.generateIdentityFromSecretWords(words));
+        const expectedPem = `-----BEGIN PRIVATE KEY-----
+MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCBhUpnRuEN4T/b8UqOgMhlz
+tAEio3Zu8BeAg+9gsQZexQ==
+-----END PRIVATE KEY-----
+`;
+        expect(pem).toEqual(expectedPem);
+
+        const privateKeyWords = ZxAIBC.loadFromSecretWords(words);
+        const privateKeyPem = ZxAIBC.loadFromPem(pem);
+
+        expect(privateKeyPem.export({ type: 'pkcs8', format: 'der' }).toString('base64'))
+            .toEqual(privateKeyWords.export({ type: 'pkcs8', format: 'der' }).toString('base64'));
+    });
+
+
+
+
+
+
+
+
+    describe('BCTests', () => {
+
+
+        test('load PEM', () => {
+            const pem = `-----BEGIN PRIVATE KEY-----
+MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCBhUpnRuEN4T/b8UqOgMhlz
+tAEio3Zu8BeAg+9gsQZexQ==
+-----END PRIVATE KEY-----`;
+
+            const pem2 = `-----BEGIN PRIVATE KEY-----
+MIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQgVL9bnC4N8Lyyu/wlDfel
+YbNENWKFGADQh0NK+Te+wP+hRANCAAR77XFSL/8i+5PeOSLoTYy1Fyo9gz722qaB
++A+mWoq308QYNQS0srH/OQ5sYtykEJpIUedYjPsZv0J6jf/VORAv
+-----END PRIVATE KEY-----`;
+
+            const loaded = ZxAIBC.loadFromPem(pem);
+            const publicKey = crypto.createPublicKey(loaded);
+
+            const address = ZxAIBC.addressFromPublicKey(publicKey);
+
+            console.log(address);
+
+            expect(true).toEqual(true);
+
+        });
     });
 });

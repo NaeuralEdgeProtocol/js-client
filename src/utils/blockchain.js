@@ -5,6 +5,7 @@ import { base64ToUrlSafeBase64, urlSafeBase64ToBase64 } from './helper.functions
 import { Buffer } from 'node:buffer';
 import elliptic from 'elliptic';
 import hkdf from 'futoin-hkdf';
+import { words } from './words.js';
 
 const ec = new elliptic.ec('secp256k1');
 const EE_SIGN = 'EE_SIGN';
@@ -21,13 +22,25 @@ const SPKI = asn1.define('SPKI', function () {
     );
 });
 
-const PKCS8 = asn1.define('PKCS8PrivateKeyInfo', function () {
+const ECPrivateKey = asn1.define('ECPrivateKey', function () {
     this.seq().obj(
         this.key('version').int(),
-        this.key('algorithm').seq().obj(this.key('id').objid(), this.key('params').optional().any()),
-        this.octstr(this.seq(this.key('flag').int(), this.key('content').octstr())),
+        this.key('privateKey').octstr(),
+        this.key('publicKey').explicit(1).optional().bitstr()
     );
 });
+
+const PKCS8 = asn1.define('PKCS8', function () {
+    this.seq().obj(
+        this.key('version').int(),
+        this.key('privateKeyAlgorithm').seq().obj(
+            this.key('algorithm').objid(),
+            this.key('parameters').objid()
+        ),
+        this.key('privateKey').octstr(),
+    );
+});
+
 
 /**
  * @typedef {Object} ZxAIBlockchainOptions
@@ -126,9 +139,9 @@ export class ZxAIBC {
     static privateKeyObjectToECKeyPair(privateKeyObject) {
         const hexPrivKey = Buffer.from(privateKeyObject.export({ type: 'pkcs8', format: 'der' }));
         const definition = PKCS8.decode(hexPrivKey, 'der');
-        const privateKeyData = definition.content;
+        const keyData = ECPrivateKey.decode(definition.privateKey, 'der');
 
-        return ec.keyFromPrivate(privateKeyData, 'hex');
+        return ec.keyFromPrivate(keyData.privateKey, 'hex');
     }
 
     static addressToECPublicKey(address) {
@@ -166,6 +179,78 @@ export class ZxAIBC {
         });
     }
 
+    static generateRandomWords(numWords = 24) {
+        const randomWords = [];
+
+        let i = 0;
+        while (i < numWords) {
+            const randomIndex = Math.floor(Math.random() * words.length);
+            if (!randomWords.includes(words[randomIndex])) {
+                randomWords.push(words[randomIndex]);
+                i++;
+            }
+        }
+
+        return randomWords;
+    }
+
+    static generateIdentityFromSecretWords(words) {
+        const asString = words.join(';');
+        const hash = crypto.createHash('sha256').update(asString).digest('hex');
+        const hashInt = BigInt(`0x${hash}`);
+        const orderN = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+        const validSeed = hashInt % orderN;
+
+        return ec.keyFromPrivate(validSeed.toString(16));
+    }
+
+    static convertEllipticPrivateKeyToPKCS8DER(privateKeyHex) {
+        const privateKeyBuffer = Buffer.from(privateKeyHex, 'hex');
+
+        const ecPrivateKey = ECPrivateKey.encode({
+            version: 1,
+            privateKey: privateKeyBuffer,
+        }, 'der');
+
+        const privateKeyInfo = PKCS8.encode({
+            version: 0,
+            privateKeyAlgorithm: {
+                algorithm: [1, 2, 840, 10045, 2, 1],
+                parameters: [1, 3, 132, 0, 10]
+            },
+            privateKey: ecPrivateKey
+        }, 'der');
+
+        return privateKeyInfo;
+    }
+
+    static convertECKeyPairToPEM(keyPair) {
+        const privateKeyHex = keyPair.getPrivate('hex');
+        const publicKeyHex = keyPair.getPublic('hex').slice(2);
+        const pkcs8DER = ZxAIBC.convertEllipticPrivateKeyToPKCS8DER(privateKeyHex, publicKeyHex);
+
+        return `-----BEGIN PRIVATE KEY-----\n${pkcs8DER.toString('base64').match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----\n`;
+    }
+
+    static loadFromSecretWords(words) {
+        const identity = ZxAIBC.generateIdentityFromSecretWords(words);
+
+        return ZxAIBC.loadFromPem(ZxAIBC.convertECKeyPairToPEM(identity));
+    }
+
+    static loadFromPem(pem) {
+        try {
+            return crypto.createPrivateKey({
+                key: pem,
+                format: 'pem',
+                type: 'pkcs8'
+            });
+        } catch (error) {
+            console.error('Failed to load private key from PEM:', error);
+            throw new Error('Invalid PEM format or corrupted key data.');
+        }
+    }
+
     /**
      * Returns the public key as a string.
      *
@@ -186,19 +271,6 @@ export class ZxAIBC {
 
     exportAsPem() {
         return this.keyPair.privateKey.export({ type: 'pkcs8', format: 'pem' });
-    }
-
-    static loadFromPem(pem) {
-        try {
-            return crypto.createPrivateKey({
-                key: pem,
-                format: 'pem',
-                type: 'pkcs8'
-            });
-        } catch (error) {
-            console.error('Failed to load private key from PEM:', error);
-            throw new Error('Invalid PEM format or corrupted key data.');
-        }
     }
 
     /**
