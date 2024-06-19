@@ -81,6 +81,9 @@ export const TIMEOUT_TO_FIRST_RESPONSE = 1500 * SECOND;
 export const NODE_OFFLINE_CUTOFF_TIME = 60 * SECOND;
 
 export const REST_CUSTOM_EXEC_SIGNATURE = 'REST_CUSTOM_EXEC_01';
+export const ADMIN_PIPELINE_NAME = 'admin_pipeline';
+export const NETMON_SIGNATURE = 'NET_MON_01';
+export const NETMON_DEFAULT_INSTANCE = 'NET_MON_01_INST';
 
 // Node Commands
 export const NODE_COMMAND_ARCHIVE_CONFIG = 'ARCHIVE_CONFIG';

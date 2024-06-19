@@ -1,6 +1,9 @@
 import { generateId } from './utils/helper.functions.js';
 import { Pipeline } from './models/pipeline.js';
 import {
+    ADMIN_PIPELINE_NAME,
+    NETMON_DEFAULT_INSTANCE,
+    NETMON_SIGNATURE,
     NODE_COMMAND_ARCHIVE_CONFIG,
     NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE,
     NODE_COMMAND_UPDATE_CONFIG,
@@ -160,6 +163,38 @@ export class NodeManager {
         }
 
         return changeSet;
+    }
+
+    /**
+     * Sends a request for the node hardware stats history.
+     *
+     * @return {Promise<Object>}
+     */
+    async getHardwareStats(steps = 20, useSupervisor = true) {
+        const message = {
+            PAYLOAD: {
+                NAME: ADMIN_PIPELINE_NAME,
+                INSTANCE_ID: NETMON_DEFAULT_INSTANCE,
+                SIGNATURE: NETMON_SIGNATURE,
+                INSTANCE_CONFIG: {
+                    INSTANCE_COMMAND: {
+                        node: this.node,
+                        request: 'history',
+                        options: {
+                            steps: steps,
+                        },
+                    },
+                },
+            },
+            ACTION: NODE_COMMAND_UPDATE_PIPELINE_INSTANCE,
+        };
+
+        let node = this.node;
+        if (useSupervisor) {
+            node = (await this.client.getSupervisors()).pop();
+        }
+
+        return this.client.publish(node, message);
     }
 
     /**

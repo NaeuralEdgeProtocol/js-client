@@ -251,6 +251,18 @@ export class ZxAIBC {
         }
     }
 
+    loadIdentity(identityPrivateKey) {
+        const publicKey = crypto.createPublicKey(identityPrivateKey);
+        this.keyPair = {
+            privateKey: identityPrivateKey,
+            publicKey,
+        }
+
+        this.compressedPublicKey = ZxAIBC.compressPublicKeyObject(this.keyPair.publicKey);
+
+        return true;
+    }
+
     /**
      * Returns the public key as a string.
      *

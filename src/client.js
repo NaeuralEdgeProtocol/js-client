@@ -689,6 +689,10 @@ export class ZxAIClient extends EventEmitter2 {
         return this.bootOptions.initiator;
     }
 
+    loadIdentity(identityPrivateKey) {
+        return this.zxAIbc.loadIdentity(identityPrivateKey);
+    }
+
     /**
      * This method returns the NaeuralEdgeProtocol Network unique blockchain address.
      *

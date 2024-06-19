@@ -123,13 +123,25 @@ describe('NaeuralEdgeProtocol Blockchain Tests', () => {
     });
 
     test('Generate From Secret Words', () => {
-        const words = ['Naeural', 'is', 'the', 'best', 'AI', 'and', 'blockchain', 'integration'];
+        // const words = ['Naeural', 'is', 'the', 'best', 'AI', 'and', 'blockchain', 'integration'];
+        const words = [
+            'stability', 'couple', 'allocation', 'email', 'administrator',
+            'birth', 'refugees', 'simulation', 'laden', 'diagram', 'carried',
+            'mortgage'
+        ];
         const pem = ZxAIBC.convertECKeyPairToPEM(ZxAIBC.generateIdentityFromSecretWords(words));
+//         const expectedPem = `-----BEGIN PRIVATE KEY-----
+// MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCBhUpnRuEN4T/b8UqOgMhlz
+// tAEio3Zu8BeAg+9gsQZexQ==
+// -----END PRIVATE KEY-----
+// `;
+
         const expectedPem = `-----BEGIN PRIVATE KEY-----
-MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCBhUpnRuEN4T/b8UqOgMhlz
-tAEio3Zu8BeAg+9gsQZexQ==
+MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCDch2VDbeVR6j/4gEtnwPhx
+dlX1mKIzZ+Rt94ydCRaVjw==
 -----END PRIVATE KEY-----
 `;
+
         expect(pem).toEqual(expectedPem);
 
         const privateKeyWords = ZxAIBC.loadFromSecretWords(words);
@@ -161,7 +173,13 @@ YbNENWKFGADQh0NK+Te+wP+hRANCAAR77XFSL/8i+5PeOSLoTYy1Fyo9gz722qaB
 +A+mWoq308QYNQS0srH/OQ5sYtykEJpIUedYjPsZv0J6jf/VORAv
 -----END PRIVATE KEY-----`;
 
-            const loaded = ZxAIBC.loadFromPem(pem);
+            const pem3 = `-----BEGIN PRIVATE KEY-----
+MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCDch2VDbeVR6j/4gEtnwPhx
+dlX1mKIzZ+Rt94ydCRaVjw==
+-----END PRIVATE KEY-----`;
+
+
+            const loaded = ZxAIBC.loadFromPem(pem3);
             const publicKey = crypto.createPublicKey(loaded);
 
             const address = ZxAIBC.addressFromPublicKey(publicKey);
