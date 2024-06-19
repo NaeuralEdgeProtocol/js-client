@@ -7,7 +7,7 @@ import {
     NODE_COMMAND_ARCHIVE_CONFIG,
     NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE,
     NODE_COMMAND_UPDATE_CONFIG,
-    NODE_COMMAND_UPDATE_PIPELINE_INSTANCE,
+    NODE_COMMAND_UPDATE_PIPELINE_INSTANCE, STICKY_COMMAND_ID_KEY,
 } from './constants.js';
 import { PluginInstance } from './models/plugin.instance.js';
 
@@ -170,20 +170,25 @@ export class NodeManager {
      *
      * @return {Promise<Object>}
      */
-    async getHardwareStats(steps = 20, useSupervisor = true) {
+    async getHardwareStats(steps = 20, extra = {}, useSupervisor = false) {
+        let command = {
+            node: this.node,
+            request: 'history',
+            options: {
+                steps: steps,
+            },
+        };
+
+        command[STICKY_COMMAND_ID_KEY] = generateId();
+        command = Object.assign({}, command, extra);
+
         const message = {
             PAYLOAD: {
                 NAME: ADMIN_PIPELINE_NAME,
                 INSTANCE_ID: NETMON_DEFAULT_INSTANCE,
                 SIGNATURE: NETMON_SIGNATURE,
                 INSTANCE_CONFIG: {
-                    INSTANCE_COMMAND: {
-                        node: this.node,
-                        request: 'history',
-                        options: {
-                            steps: steps,
-                        },
-                    },
+                    INSTANCE_COMMAND: command,
                 },
             },
             ACTION: NODE_COMMAND_UPDATE_PIPELINE_INSTANCE,

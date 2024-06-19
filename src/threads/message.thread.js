@@ -721,28 +721,31 @@ export class Thread extends EventEmitter2 {
             if (this._messageHasKnownFormat(duplicate)) {
                 this._decodeToInternalFormat(duplicate).then((decoded) => {
                     if (decoded.EE_PAYLOAD_PATH[2]?.toLowerCase() === 'net_mon_01') {
-                        this.mainThread.postMessage({
-                            threadId: this.threadId,
-                            type: MESSAGE_TYPE_SUPERVISOR_STATUS,
-                            success: true,
-                            error: null,
-                            data: decoded.DATA,
-                        });
 
-                        const addresses = {};
-                        Object.keys(decoded.DATA.CURRENT_NETWORK ?? {}).forEach((nodeName) => {
-                            addresses[nodeName] = decoded.DATA.CURRENT_NETWORK[nodeName].address;
-                        });
+                        if (decoded.DATA?.CURRENT_NETWORK !== undefined) {
+                            this.mainThread.postMessage({
+                                threadId: this.threadId,
+                                type: MESSAGE_TYPE_SUPERVISOR_STATUS,
+                                success: true,
+                                error: null,
+                                data: decoded.DATA,
+                            });
 
-                        this.mainThread.postMessage({
-                            threadId: this.threadId,
-                            type: MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH,
-                            success: true,
-                            error: null,
-                            data: addresses,
-                        });
+                            const addresses = {};
+                            Object.keys(decoded.DATA.CURRENT_NETWORK ?? {}).forEach((nodeName) => {
+                                addresses[nodeName] = decoded.DATA.CURRENT_NETWORK[nodeName].address;
+                            });
 
-                        if (decoded.DATA.IS_ALERT === true) {
+                            this.mainThread.postMessage({
+                                threadId: this.threadId,
+                                type: MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH,
+                                success: true,
+                                error: null,
+                                data: addresses,
+                            });
+                        }
+
+                        if (decoded.DATA.IS_ALERT === true && !!decoded.DATA?.CURRENT_ALERTED) {
                             const alerted = Object.keys(decoded.DATA.CURRENT_ALERTED).map((nodeName) => ({
                                 node: nodeName,
                                 lastSeen: decoded.DATA.CURRENT_ALERTED[nodeName]['last_seen_sec'],
