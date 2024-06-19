@@ -170,12 +170,13 @@ export class NodeManager {
      *
      * @return {Promise<Object>}
      */
-    async getHardwareStats(steps = 20, extra = {}, useSupervisor = false) {
+    async getHardwareStats(steps = 1, periodH = 1, extra = {}, useSupervisor = false) {
         let command = {
             node: this.node,
             request: 'history',
             options: {
-                steps: steps,
+                step: steps,
+                time_window_hours: periodH,
             },
         };
 
@@ -196,7 +197,7 @@ export class NodeManager {
 
         let node = this.node;
         if (useSupervisor) {
-            node = (await this.client.getSupervisors()).pop();
+            node = (await this.client.getSupervisors())[0];
         }
 
         return this.client.publish(node, message);
