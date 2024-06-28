@@ -411,7 +411,23 @@ export class NodeManager {
         return this;
     }
 
-    // TODO: check if this should be supported updatePipelineConfig(pipeline, config) {}
+    /**
+     * Updates the DataCaptureThread metadata for the specified pipeline.
+     *
+     * @param {Pipeline|string} pipelineOrId
+     * @param {Object} update
+     * @return {Promise<NodeManager>}
+     */
+    async updatePipelineConfig(pipelineOrId, update) {
+        let pipeline = pipelineOrId;
+        if (typeof pipelineOrId === 'string') {
+            pipeline = await this.getPipeline(pipelineOrId);
+        }
+
+        pipeline.updateConfig(update);
+
+        return this;
+    }
 
     /**
      * Closes the pipeline by queueing an Archive Config command for the NaeuralEdgeProtocol node.

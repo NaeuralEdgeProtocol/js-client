@@ -203,6 +203,12 @@ export class Pipeline {
         return this.dct;
     }
 
+    updateConfig(update) {
+        this.dct.updateConfig(update);
+
+        return this;
+    }
+
     /**
      * Returns the metadata set on this pipeline.
      *
