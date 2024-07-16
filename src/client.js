@@ -141,9 +141,9 @@ export class ZxAIClient extends EventEmitter2 {
      * @private
      */
     topicPaths = {
-        heartbeats: '$share/$initiator/lummetry/ctrl',
-        notifications: '$share/$initiator/lummetry/notif',
-        payloads: '$share/$initiator/lummetry/payloads',
+        heartbeats: '$share/$initiator/$root/ctrl',
+        notifications: '$share/$initiator/$root/notif',
+        payloads: '$share/$initiator/$root/payloads',
     };
 
     /**
@@ -153,6 +153,7 @@ export class ZxAIClient extends EventEmitter2 {
      */
     bootOptions = {
         initiator: null,
+        topicRoot: 'lummetry',
         blockchain: {
             debug: false,
             key: '',
@@ -580,7 +581,7 @@ export class ZxAIClient extends EventEmitter2 {
      */
     boot() {
         Object.keys(this.threads).forEach((threadType) => {
-            const topic = this.topicPaths[threadType].replace('$initiator', this.bootOptions.initiator);
+            const topic = this.topicPaths[threadType].replace('$initiator', this.bootOptions.initiator).replace('$root', this.bootOptions.topicRoot);
 
             this.threads[threadType].forEach((threadConfig, index) => {
                 this.logger.log(`[Main Thread] Booting ${threadType} thread. Id: ${threadConfig.id} Topic: ${topic}`);
@@ -1005,7 +1006,7 @@ export class ZxAIClient extends EventEmitter2 {
                 };
             }
 
-            mqttConnection.publish(`lummetry/${node}/config`, blockchainEngine.sign(toSend));
+            mqttConnection.publish(`${this.bootOptions.topicRoot}/${node}/config`, blockchainEngine.sign(toSend));
 
             if (watches.length === 0) {
                 resolve({
