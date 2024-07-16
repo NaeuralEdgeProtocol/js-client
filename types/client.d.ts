@@ -65,6 +65,12 @@ export class ZxAIClient extends EventEmitter2 {
      */
     schemas: SchemasRepository;
     /**
+     * Statistics about the memory used by the SDK.
+     *
+     * @type {*}
+     */
+    memoryUsageStats: any;
+    /**
      * This method connects the client to the network and spawns all the threads on the network streams.
      *
      * @return {void}
@@ -76,13 +82,18 @@ export class ZxAIClient extends EventEmitter2 {
      * @return {Object}
      */
     getMemoryStats(): any;
-    shutdown(): void;
     /**
      * This method returns the initiator name used for the connection.
      *
      * @return {string} initiator name
      */
     getName(): string;
+    /**
+     * Loads an identity for the current session.
+     *
+     * @param identityPrivateKey
+     */
+    loadIdentity(identityPrivateKey: any): boolean;
     /**
      * This method returns the NaeuralEdgeProtocol Network unique blockchain address.
      *
@@ -118,6 +129,12 @@ export class ZxAIClient extends EventEmitter2 {
      * @return {Promise<Object>}
      */
     getNetworkStatus(supervisor?: any): Promise<any>;
+    /**
+     * Get the list of network supervisors.
+     *
+     * @return {Promise<string[]>}
+     */
+    getSupervisors(): Promise<string[]>;
     /**
      * Returns a list of all the registered DCT Schemas.
      *
@@ -167,7 +184,7 @@ export class ZxAIClient extends EventEmitter2 {
      * @param stream
      * @return {Observable|null} a subscribable stream with the selected event type.
      */
-    getStream(stream: any): Observable<any> | null;
+    getStream(stream: any): Observable<Object> | null;
     /**
      * Returns the client's observable universe: all the hosts that sent a heartbeat that are outside
      * this client's fleet.

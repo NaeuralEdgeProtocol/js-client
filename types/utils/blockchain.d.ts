@@ -31,12 +31,23 @@ export class ZxAIBC {
     static addressFromPublicKey(publicKey: any): string;
     static addressToPublicKeyUncompressed(address: any): any;
     static addressToPublicKeyObject(address: any): crypto.KeyObject;
+    static generateRandomWords(numWords?: number): string[];
+    static generateIdentityFromSecretWords(words: any): any;
+    static convertEllipticPrivateKeyToPKCS8DER(privateKeyHex: any): any;
+    static convertECKeyPairToPEM(keyPair: any): string;
+    static loadFromSecretWords(words: any): crypto.KeyObject;
+    static loadFromPem(pem: any): crypto.KeyObject;
     /**
      * NaeuralEdgeProtocol Network Blockchain engine constructor.
      *
      * @param {ZxAIBlockchainOptions} options
      */
     constructor(options: ZxAIBlockchainOptions);
+    /**
+     * Loads a Naeural Identity into the current working session.
+     * @param identityPrivateKey
+     */
+    loadIdentity(identityPrivateKey: any): boolean;
     /**
      * Returns the public key as a string.
      *
@@ -49,6 +60,9 @@ export class ZxAIBC {
      * @return {string} the NaeuralEdgeProtocol Network Address
      */
     getAddress(): string;
+    /**
+     * Exports loaded identity as PEM file.
+     */
     exportAsPem(): string | Buffer;
     /**
      * Returns the signed input object with all the cryptographical metadata appended to it. The format can be either

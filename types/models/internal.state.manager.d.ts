@@ -21,7 +21,6 @@ export class InternalStateManager extends EventEmitter2 {
      * - other observed nodes (not registered in the working fleet)
      * - pending transactions (updates communicated to the node without any responses)
      * - network status as provided by the network supervisor
-     * - Kubernetes cluster status as provided by the network supervisor (if deployed on Kubernetes)
      *
      * @type {Object}
      * @private

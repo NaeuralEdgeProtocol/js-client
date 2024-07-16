@@ -86,6 +86,12 @@ export class NodeManager {
      */
     private pipelinesMarkedForClosing;
     /**
+     * Sends a request for the node hardware stats history.
+     *
+     * @return {Promise<Object>}
+     */
+    getHardwareStats(steps?: number, periodH?: number, extra?: {}, useSupervisor?: boolean): Promise<any>;
+    /**
      * Sends a request to restart the node.
      *
      * @return {Promise<Object>}
@@ -164,6 +170,14 @@ export class NodeManager {
      */
     updatePipelineMetadata(pipelineOrId: Pipeline | string, metadata: any): Promise<NodeManager>;
     /**
+     * Updates the DataCaptureThread metadata for the specified pipeline.
+     *
+     * @param {Pipeline|string} pipelineOrId
+     * @param {Object} update
+     * @return {Promise<NodeManager>}
+     */
+    updatePipelineConfig(pipelineOrId: Pipeline | string, update: any): Promise<NodeManager>;
+    /**
      * Closes the pipeline by queueing an Archive Config command for the NaeuralEdgeProtocol node.
      *
      * @param {Pipeline|string} pipelineOrId
@@ -234,9 +248,10 @@ export class NodeManager {
      * @param {PluginInstance} instance
      * @param {Object|Array} schedule - The schedule to set. If an object, it should
      * map days to time intervals. If an array, it applies the same schedule to all days.
+     * @param {string} timezone
      * @returns {NodeManager} The instance of PluginInstance to allow method chaining.
      */
-    setInstanceSchedule(instance: PluginInstance, schedule: any | any[]): NodeManager;
+    setInstanceSchedule(instance: PluginInstance, schedule: any | any[], timezone?: string): NodeManager;
     /**
      * Commits the changes registered for the node.
      *

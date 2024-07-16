@@ -170,6 +170,9 @@ export class ZxAIClient extends EventEmitter2 {
             url: null,
             username: null,
             password: null,
+            clean: true,
+            clientId: null,
+            prefix: null,
         },
         customFormatters: {},
         threads: {
@@ -579,14 +582,14 @@ export class ZxAIClient extends EventEmitter2 {
         Object.keys(this.threads).forEach((threadType) => {
             const topic = this.topicPaths[threadType].replace('$initiator', this.bootOptions.initiator);
 
-            this.threads[threadType].forEach((threadConfig) => {
+            this.threads[threadType].forEach((threadConfig, index) => {
                 this.logger.log(`[Main Thread] Booting ${threadType} thread. Id: ${threadConfig.id} Topic: ${topic}`);
                 threadConfig.thread.postMessage({
                     id: threadConfig.id,
                     command: THREAD_COMMAND_START,
                     type: threadType,
                     config: {
-                        connection: { ...this.bootOptions.mqttOptions, topic: topic },
+                        connection: { ...this.bootOptions.mqttOptions, suffix: `${threadType.substring(0, 1)}${index}`, topic: topic },
                         secure: true,
                         zxaibc: this.bootOptions.blockchain,
                         stateManager: this.bootOptions.stateManager,
@@ -598,15 +601,20 @@ export class ZxAIClient extends EventEmitter2 {
             });
         });
 
-        this.mqttClient = mqtt.connect(this.bootOptions.mqttOptions.url, {
+        const connectionOptions = {
             username: this.bootOptions.mqttOptions.username,
             password: this.bootOptions.mqttOptions.password,
-            clean: true,
-            clientId: null,
-        });
+            clean: this.bootOptions.mqttOptions.clean !== false,
+            clientId: (this.bootOptions.mqttOptions.clientId !== undefined && this.bootOptions.mqttOptions.clientId !== null)
+                ? `${this.bootOptions.mqttOptions.prefix}_${this.bootOptions.mqttOptions.clientId}_mt`
+                : null,
+
+        };
+
+        this.mqttClient = mqtt.connect(this.bootOptions.mqttOptions.url, connectionOptions);
 
         this.mqttClient.on('connect', () => {
-            this.logger.log('[Main Thread] Successfully connected to MQTT.');
+            this.logger.log(`[Main Thread] Successfully connected to MQTT at "${this.bootOptions.mqttOptions.url}" with (clean=${connectionOptions.clean};clientId=${connectionOptions.clientId}).`);
         });
 
         this.mqttClient.on('error', () => {

@@ -117,6 +117,12 @@ export class Pipeline {
      */
     getDataCaptureThread(): DataCaptureThread | null;
     /**
+     * Update configuration for the pipeline.
+     *
+     * @param update
+     */
+    updateConfig(update: any): this;
+    /**
      * Returns the metadata set on this pipeline.
      *
      * @return {*}

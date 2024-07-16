@@ -264,7 +264,7 @@ export class PluginInstance {
      *
      * @param {Object|Array} schedule - The schedule to set. If an object, it should
      * map days to time intervals. If an array, it applies the same schedule to all days.
-     * @param {string} timezone
+     * @param {string} timezone The schedule timezone.
      * @param {boolean} dontMarkDirty
      *
      * @returns {PluginInstance} The instance of PluginInstance to allow method chaining.
@@ -317,15 +317,4 @@ export class PluginInstance {
      * @return {ZxAICommand}
      */
     getRawInstanceCommandPayload(command: any): ZxAICommand;
-    /**
-     * Validates the structure and content of the schedule object.
-     * For separate schedules, ensures each key is a valid day and each value is an array of time intervals.
-     * For a single schedule for all days, ensures it's an array of time intervals.
-     * Time intervals should be in the format ["HH:MM", "HH:MM"].
-     *
-     * @private
-     * @param {Object|Array} schedule - The schedule to validate.
-     * @returns {boolean} True if the schedule is valid, otherwise throws an Error.
-     */
-    private _validateSchedule;
 }

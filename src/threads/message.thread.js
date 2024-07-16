@@ -323,7 +323,7 @@ export class Thread extends EventEmitter2 {
         this.mqttClient.on('connect', () => {
             this.logger.log('Successfully connected to MQTT.');
             markBootUpdate('mqtt.connection', true, this.threadId, this.threadType);
-            this.mqttClient.subscribe(this.startupOptions.connection.topic, (err) => {
+            this.mqttClient.subscribe(this.startupOptions.connection.topic, { qos: 2 },(err) => {
                 if (!err) {
                     this.logger.log(`Successfully subscribed to ${this.startupOptions.connection.topic}.`);
                     markBootUpdate('mqtt.topic', true, this.threadId, this.threadType);
@@ -856,12 +856,18 @@ parentPort?.on('message', (message) => {
 
         thread = new Thread(message, redisOptions, logger);
 
-        const mqttClient = mqtt.connect(startupOptions.connection.url, {
+        const mqttOptions = {
             username: startupOptions.connection.username,
             password: startupOptions.connection.password,
-            clean: startupOptions.connection.clean ? startupOptions.connection.clean === true : true,
-            clientId: startupOptions.connection.clientId ?? null,
-        });
+            clean: startupOptions.connection.clean !== false,
+            clientId: (startupOptions.connection.clientId !== undefined && startupOptions.connection.clientId !== null)
+                ? `${startupOptions.connection.prefix}_${startupOptions.connection.clientId}_${startupOptions.connection.suffix}`
+                : null,
+        };
+
+        const mqttClient = mqtt.connect(startupOptions.connection.url, mqttOptions);
+
+        logger.log(`Configured MQTT connection at "${startupOptions.connection.url}" with (clean=${JSON.stringify(mqttOptions.clean)};clientId=${mqttOptions.clientId})`);
 
         thread.run(mqttClient);
     }

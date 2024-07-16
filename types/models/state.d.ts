@@ -21,34 +21,6 @@ export class State extends EventEmitter2 {
      */
     constructor(type: string, manager: InternalStateManager | RedisStateManager, options: any);
     /**
-     * The type of manager to use. It can be either INTERNAL_STATE_MANAGER or REDIS_STATE_MANAGER.
-     *
-     * @type {string}
-     * @private
-     */
-    private type;
-    /**
-     * The state manager to use for storing and applying state operations.
-     *
-     * @type {RedisStateManager|InternalStateManager}
-     * @private
-     */
-    private manager;
-    /**
-     * The fleet to follow.
-     *
-     * @type {string[]}
-     * @private
-     */
-    private fleet;
-    /**
-     * The open network transactions handler.
-     *
-     * @type {NetworkRequestsHandler}
-     * @private
-     */
-    private networkRequestsHandler;
-    /**
      * Method for storing the processed heartbeat into the state.
      *
      * @param {Object} info
@@ -126,6 +98,12 @@ export class State extends EventEmitter2 {
      * @return {Promise<boolean>}
      */
     storeNetworkInfo(data: any): Promise<boolean>;
+    /**
+     * Get the list of observed supervisor nodes.
+     *
+     * @return {Promise<string[]>}
+     */
+    getNetworkSupervisors(): Promise<string[]>;
     /**
      * Returns the network as seen by the `supervisor` node.
      *
