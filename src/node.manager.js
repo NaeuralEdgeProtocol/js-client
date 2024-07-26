@@ -751,7 +751,7 @@ export class NodeManager {
         const node = this.node;
 
         return client.state.getNodeInfo(node).then((nodeInfo) => {
-            return nodeInfo.data?.pipelines
+            return nodeInfo?.data?.pipelines
                 ? Object.keys(nodeInfo.data?.pipelines).map((pipelineId) => {
                       const pipelineConfig = nodeInfo.data?.pipelines[pipelineId];
 
