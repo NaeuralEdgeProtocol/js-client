@@ -86,6 +86,14 @@ export class NodeManager {
      */
     private pipelinesMarkedForClosing;
     /**
+     *
+     * @param code
+     * @param instanceName
+     * @param pipeline
+     * @return {Promise<NodeManager>}
+     */
+    prepareCustomCode(code: any, instanceName: any, pipeline: any): Promise<NodeManager>;
+    /**
      * Sends a request for the node hardware stats history.
      *
      * @return {Promise<Object>}

@@ -186,6 +186,15 @@ export class ZxAIClient extends EventEmitter2 {
      */
     getStream(stream: any): Observable<Object> | null;
     /**
+     * Sets a custom callback for a specific instance.
+     *
+     * @param {string} node
+     * @param {PluginInstance|string} instance
+     * @param callback
+     * @return {ZxAIClient}
+     */
+    setInstanceCallback(node: string, instance: PluginInstance | string, callback: any): ZxAIClient;
+    /**
      * Returns the client's observable universe: all the hosts that sent a heartbeat that are outside
      * this client's fleet.
      *
@@ -208,15 +217,6 @@ export class ZxAIClient extends EventEmitter2 {
      * @return {Promise<unknown>}
      */
     publish(node: string, message: any, extraWatches?: Array<Array<string>>): Promise<unknown>;
-    /**
-     * Private method for checking if a specified node is in the controlled fleet or if it's heartbeat has been
-     * witnessed.
-     *
-     * @param {string} node
-     * @return {Promise<boolean>}
-     * @private
-     */
-    private _checkNode;
 }
 export type AlertedNodes = {
     [x: string]: number;
@@ -314,3 +314,4 @@ export type AvailableDCTResponse = {
 import EventEmitter2 from 'eventemitter2';
 import { NodeStatus, ObservedNodes, State } from './models/state.js';
 import { NodeManager } from './node.manager.js';
+import { PluginInstance } from './models/plugin.instance';
