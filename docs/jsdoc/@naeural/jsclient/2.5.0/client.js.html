@@ -1,0 +1,1118 @@
+<!DOCTYPE html><html lang="en" style="font-size:16px"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Source: client.js</title><!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]--><script src="scripts/third-party/hljs.js" defer="defer"></script><script src="scripts/third-party/hljs-line-num.js" defer="defer"></script><script src="scripts/third-party/popper.js" defer="defer"></script><script src="scripts/third-party/tippy.js" defer="defer"></script><script src="scripts/third-party/tocbot.min.js"></script><script>var baseURL="/",locationPathname="";baseURL=(locationPathname=document.location.pathname).substr(0,locationPathname.lastIndexOf("/")+1)</script><link rel="stylesheet" href="styles/clean-jsdoc-theme.min.css"><svg aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display:none"><defs><symbol id="copy-icon" viewbox="0 0 488.3 488.3"><g><path d="M314.25,85.4h-227c-21.3,0-38.6,17.3-38.6,38.6v325.7c0,21.3,17.3,38.6,38.6,38.6h227c21.3,0,38.6-17.3,38.6-38.6V124    C352.75,102.7,335.45,85.4,314.25,85.4z M325.75,449.6c0,6.4-5.2,11.6-11.6,11.6h-227c-6.4,0-11.6-5.2-11.6-11.6V124    c0-6.4,5.2-11.6,11.6-11.6h227c6.4,0,11.6,5.2,11.6,11.6V449.6z"/><path d="M401.05,0h-227c-21.3,0-38.6,17.3-38.6,38.6c0,7.5,6,13.5,13.5,13.5s13.5-6,13.5-13.5c0-6.4,5.2-11.6,11.6-11.6h227    c6.4,0,11.6,5.2,11.6,11.6v325.7c0,6.4-5.2,11.6-11.6,11.6c-7.5,0-13.5,6-13.5,13.5s6,13.5,13.5,13.5c21.3,0,38.6-17.3,38.6-38.6    V38.6C439.65,17.3,422.35,0,401.05,0z"/></g></symbol><symbol id="search-icon" viewBox="0 0 512 512"><g><g><path d="M225.474,0C101.151,0,0,101.151,0,225.474c0,124.33,101.151,225.474,225.474,225.474    c124.33,0,225.474-101.144,225.474-225.474C450.948,101.151,349.804,0,225.474,0z M225.474,409.323    c-101.373,0-183.848-82.475-183.848-183.848S124.101,41.626,225.474,41.626s183.848,82.475,183.848,183.848    S326.847,409.323,225.474,409.323z"/></g></g><g><g><path d="M505.902,476.472L386.574,357.144c-8.131-8.131-21.299-8.131-29.43,0c-8.131,8.124-8.131,21.306,0,29.43l119.328,119.328    c4.065,4.065,9.387,6.098,14.715,6.098c5.321,0,10.649-2.033,14.715-6.098C514.033,497.778,514.033,484.596,505.902,476.472z"/></g></g></symbol><symbol id="font-size-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M11.246 15H4.754l-2 5H.6L7 4h2l6.4 16h-2.154l-2-5zm-.8-2L8 6.885 5.554 13h4.892zM21 12.535V12h2v8h-2v-.535a4 4 0 1 1 0-6.93zM19 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></symbol><symbol id="add-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></symbol><symbol id="minus-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M5 11h14v2H5z"/></symbol><symbol id="dark-theme-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"/></symbol><symbol id="light-theme-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"/></symbol><symbol id="reset-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M18.537 19.567A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3a8 8 0 1 0-2.46 5.772l.997 1.795z"/></symbol><symbol id="down-icon" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.7803 6.21967C13.0732 6.51256 13.0732 6.98744 12.7803 7.28033L8.53033 11.5303C8.23744 11.8232 7.76256 11.8232 7.46967 11.5303L3.21967 7.28033C2.92678 6.98744 2.92678 6.51256 3.21967 6.21967C3.51256 5.92678 3.98744 5.92678 4.28033 6.21967L8 9.93934L11.7197 6.21967C12.0126 5.92678 12.4874 5.92678 12.7803 6.21967Z"></path></symbol><symbol id="codepen-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M16.5 13.202L13 15.535v3.596L19.197 15 16.5 13.202zM14.697 12L12 10.202 9.303 12 12 13.798 14.697 12zM20 10.869L18.303 12 20 13.131V10.87zM19.197 9L13 4.869v3.596l3.5 2.333L19.197 9zM7.5 10.798L11 8.465V4.869L4.803 9 7.5 10.798zM4.803 15L11 19.131v-3.596l-3.5-2.333L4.803 15zM4 13.131L5.697 12 4 10.869v2.262zM2 9a1 1 0 0 1 .445-.832l9-6a1 1 0 0 1 1.11 0l9 6A1 1 0 0 1 22 9v6a1 1 0 0 1-.445.832l-9 6a1 1 0 0 1-1.11 0l-9-6A1 1 0 0 1 2 15V9z"/></symbol><symbol id="close-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 10.586l4.95-4.95 1.414 1.414-4.95 4.95 4.95 4.95-1.414 1.414-4.95-4.95-4.95 4.95-1.414-1.414 4.95-4.95-4.95-4.95L7.05 5.636z"/></symbol><symbol id="menu-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></symbol></defs></svg></head><body data-theme="dark"><div class="sidebar-container"><div class="sidebar" id="sidebar"><a href="/" class="sidebar-title sidebar-title-anchor">Home</a><div class="sidebar-items-container"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DataCaptureThread.html">DataCaptureThread</a></div><div class="sidebar-section-children"><a href="InternalStateManager.html">InternalStateManager</a></div><div class="sidebar-section-children"><a href="Logger.html">Logger</a></div><div class="sidebar-section-children"><a href="NetworkRequest.html">NetworkRequest</a></div><div class="sidebar-section-children"><a href="NetworkRequestsHandler.html">NetworkRequestsHandler</a></div><div class="sidebar-section-children"><a href="NodeManager.html">NodeManager</a></div><div class="sidebar-section-children"><a href="Pipeline.html">Pipeline</a></div><div class="sidebar-section-children"><a href="PluginInstance.html">PluginInstance</a></div><div class="sidebar-section-children"><a href="RedisStateManager.html">RedisStateManager</a></div><div class="sidebar-section-children"><a href="State.html">State</a></div><div class="sidebar-section-children"><a href="ZxAIBC.html">ZxAIBC</a></div><div class="sidebar-section-children"><a href="ZxAIClient.html">ZxAIClient</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#AlertedNodes">AlertedNodes</a></div><div class="sidebar-section-children"><a href="global.html#AllowedValues">AllowedValues</a></div><div class="sidebar-section-children"><a href="global.html#AvailableDCTResponse">AvailableDCTResponse</a></div><div class="sidebar-section-children"><a href="global.html#AvailableSchemaResponse">AvailableSchemaResponse</a></div><div class="sidebar-section-children"><a href="global.html#Field">Field</a></div><div class="sidebar-section-children"><a href="global.html#IntervalDefinition">IntervalDefinition</a></div><div class="sidebar-section-children"><a href="global.html#IsObject">IsObject</a></div><div class="sidebar-section-children"><a href="global.html#NodeStatus">NodeStatus</a></div><div class="sidebar-section-children"><a href="global.html#ObservedNodes">ObservedNodes</a></div><div class="sidebar-section-children"><a href="global.html#RedisConnectionOptions">RedisConnectionOptions</a></div><div class="sidebar-section-children"><a href="global.html#SchemaCollection">SchemaCollection</a></div><div class="sidebar-section-children"><a href="global.html#SchemaDefinition">SchemaDefinition</a></div><div class="sidebar-section-children"><a href="global.html#SchemasRepository">SchemasRepository</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIBlockchainOptions">ZxAIBlockchainOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientEvent">ZxAIClientEvent</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientOptions">ZxAIClientOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAICommand">ZxAICommand</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIEventType">ZxAIEventType</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIUpdateInstanceConfig">ZxAIUpdateInstanceConfig</a></div><div class="sidebar-section-children"><a href="global.html#applyDefaultsToObject">applyDefaultsToObject</a></div><div class="sidebar-section-children"><a href="global.html#archiveConfigRequestStrategy">archiveConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#base64ToUrlSafeBase64">base64ToUrlSafeBase64</a></div><div class="sidebar-section-children"><a href="global.html#camelToZxAIFormat">camelToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#checkMandatoryFields">checkMandatoryFields</a></div><div class="sidebar-section-children"><a href="global.html#checkType">checkType</a></div><div class="sidebar-section-children"><a href="global.html#computeDifferences">computeDifferences</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToCamelFormat">convertKeysToCamelFormat</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToZxAIFormat">convertKeysToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#dctSchemas">dctSchemas</a></div><div class="sidebar-section-children"><a href="global.html#decode">decode</a></div><div class="sidebar-section-children"><a href="global.html#defaultSchemas">defaultSchemas</a></div><div class="sidebar-section-children"><a href="global.html#encode">encode</a></div><div class="sidebar-section-children"><a href="global.html#generateId">generateId</a></div><div class="sidebar-section-children"><a href="global.html#getRedisConnection">getRedisConnection</a></div><div class="sidebar-section-children"><a href="global.html#hasFleetFilter">hasFleetFilter</a></div><div class="sidebar-section-children"><a href="global.html#identityFormatter">identityFormatter</a></div><div class="sidebar-section-children"><a href="global.html#pick">pick</a></div><div class="sidebar-section-children"><a href="global.html#pluginDefinition">pluginDefinition</a></div><div class="sidebar-section-children"><a href="global.html#pluginSchemas">pluginSchemas</a></div><div class="sidebar-section-children"><a href="global.html#rawIn">rawIn</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schemas">schemas</a></div><div class="sidebar-section-children"><a href="global.html#sleep">sleep</a></div><div class="sidebar-section-children"><a href="global.html#updateConfigRequestStrategy">updateConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#updatePipelineInstanceRequestStrategy">updatePipelineInstanceRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#urlSafeBase64ToBase64">urlSafeBase64ToBase64</a></div><div class="sidebar-section-children"><a href="global.html#validateAgainstSchema">validateAgainstSchema</a></div><div class="sidebar-section-children"><a href="global.html#zxAIFormatToCamel">zxAIFormatToCamel</a></div></div></div></div></div><div class="navbar-container" id="VuAckcnZhf"><nav class="navbar"><div class="navbar-left-items"></div><div class="navbar-right-items"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div><nav></nav></nav></div><div class="toc-container"><div class="toc-content"><span class="bold">On this page</span><div id="eed4d2a0bfd64539bb9df78095dec881"></div></div></div><div class="body-wrapper"><div class="main-content"><div class="main-wrapper"><section id="source-page" class="source-page"><header><h1 id="title" class="has-anchor">client.js</h1></header><article><pre class="prettyprint source lang-js"><code>/**
+ * @typedef {Object.&lt;string, number>} AlertedNodes
+ */
+
+/**
+ * @typedef {Object} ZxAIClientOptions
+ * @property {any} emitterOptions - the EventEmitter2 setup
+ * @property {any} initiator - The initiator of the configuration.
+ * @property {Object} blockchain - Blockchain related configurations.
+ * @property {boolean} blockchain.debug - Indicates if blockchain debugging is enabled.
+ * @property {string} blockchain.key - The blockchain key.
+ * @property {string} stateManager - Describes the state manager.
+ * @property {string} loglevel - Describes the state manager.
+ * @property {Object} redis - Redis configuration details.
+ * @property {string} redis.host - The Redis server host.
+ * @property {number} redis.port - The Redis server port.
+ * @property {any} redis.password - The Redis password.
+ * @property {string} redis.pubSubChannel - The Redis Pub/Sub channel name.
+ * @property {Object} mqttOptions - MQTT connection options.
+ * @property {any} mqttOptions.url - The MQTT server URL.
+ * @property {any} mqttOptions.username - The MQTT username for authentication.
+ * @property {any} mqttOptions.password - The MQTT password for authentication.
+ * @property {Object} customFormatters - Custom formatters for configuration.
+ * @property {Object} threads - Thread configuration for various tasks.
+ * @property {number} threads.heartbeats - The number of heartbeat threads.
+ * @property {number} threads.notifications - The number of notification threads.
+ * @property {number} threads.payloads - The number of payload processing threads.
+ * @property {string[]} fleet - An array of fleet strings.
+ */
+
+/**
+ * @typedef {Object} AvailableSchemaResponse
+ * @property {string} signature - The unique signature.
+ * @property {boolean} linkable - Indicates if the entity is linkable.
+ * @property {string} name - The name of the entity.
+ * @property {string} description - A description of the entity.
+ */
+
+/**
+ * @typedef {Object} AvailableDCTResponse
+ * @property {string} name - The name of the entity.
+ * @property {string} description - A description of the entity.
+ * @property {string} type - The unique signature.
+ */
+
+import { Worker } from 'worker_threads';
+import path, { dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { v4 as uuidv4 } from 'uuid';
+import * as mqtt from 'mqtt';
+import EventEmitter2 from 'eventemitter2';
+import {
+    ZxAI_BC_ADDRESS,
+    ZxAI_CLIENT_BOOTED,
+    ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE,
+    ZxAI_ENGINE_DEREGISTERED,
+    ZxAI_ENGINE_OFFLINE,
+    ZxAI_ENGINE_ONLINE,
+    ZxAI_ENGINE_REGISTERED,
+    ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE,
+    ALL_EDGE_NODES,
+    INTERNAL_STATE_MANAGER,
+    MESSAGE_TYPE_HEARTBEAT,
+    MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH,
+    MESSAGE_TYPE_NETWORK_NODE_DOWN,
+    MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
+    MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
+    MESSAGE_TYPE_NOTIFICATION,
+    MESSAGE_TYPE_OBSERVED_NODE,
+    MESSAGE_TYPE_PAYLOAD,
+    MESSAGE_TYPE_SUPERVISOR_STATUS,
+    MESSAGE_TYPE_THREAD_MEMORY_USAGE,
+    NETWORK_STICKY_PAYLOAD_RECEIVED,
+    NODE_COMMAND_ARCHIVE_CONFIG,
+    NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE,
+    NODE_COMMAND_PIPELINE_COMMAND,
+    NODE_COMMAND_UPDATE_CONFIG,
+    NODE_COMMAND_UPDATE_PIPELINE_INSTANCE,
+    REDIS_STATE_MANAGER,
+    REST_CUSTOM_EXEC_SIGNATURE,
+    STICKY_COMMAND_ID_KEY,
+    THREAD_COMMAND_MEMORY_USAGE,
+    THREAD_COMMAND_START,
+    ZxAI_SUPERVISOR_PAYLOAD,
+} from './constants.js';
+import { ZxAIBC } from './utils/blockchain.js';
+import { State } from './models/state.js';
+import { filter, fromEvent, map, merge } from 'rxjs';
+import { THREAD_START_ERR, THREAD_START_OK } from './threads/message.thread.js';
+import { defaultSchemas } from './utils/schema.providers.js';
+import { InternalStateManager } from './models/internal.state.manager.js';
+import { RedisStateManager } from './models/redis.state.manager.js';
+import { Logger } from './app.logger.js';
+import { NodeManager } from './node.manager.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export const HEARTBEATS_STREAM = 'heartbeats';
+export const PAYLOADS_STREAM = 'payloads';
+export const NOTIFICATIONS_STREAM = 'notifications';
+/**
+ * Enum NaeuralEdgeProtocol Event Stream Types
+ * @enum {string}
+ */
+export const ZxAIEventType = {
+    PAYLOAD: PAYLOADS_STREAM,
+    HEARTBEAT: HEARTBEATS_STREAM,
+    NOTIFICATION: NOTIFICATIONS_STREAM,
+};
+/**
+ * Enum NaeuralEdgeProtocol Client Events
+ * @enum {string}
+ */
+export const ZxAIClientEvent = {
+    ZxAI_CLIENT_CONNECTED: 'ZxAICCONNSUCCESS',
+    ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE: 'ZxAICSTS',
+    ZxAI_BC_ADDRESS: 'ZxAIBCADDR',
+    ZxAI_CLIENT_BOOTED: 'ZxAIBOOT',
+    ZxAI_ENGINE_REGISTERED: 'ZxAIEEREG',
+    ZxAI_ENGINE_DEREGISTERED: 'ZxAIEEDEREG',
+    ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE: 'ZxAICONEE',
+    ZxAI_CLIENT_SYS_TOPIC_UNSUBSCRIBE: 'ZxAICSTUS',
+    ZxAI_CLIENT_DISCONNECTED: 'ZxAICDISCONN',
+    ZxAI_CLIENT_CONNECTION_ERROR: 'ZxAICCONNERR',
+    ZxAI_CLIENT_SHUTDOWN: 'ZxAISHUTDOWN',
+    ZxAI_EXCEPTION: 'ZxAIEX',
+    ZxAI_ENGINE_OFFLINE: 'ZxAIEEOFF',
+};
+
+/**
+ * @extends EventEmitter2
+ *
+ * The main network client.
+ */
+export class ZxAIClient extends EventEmitter2 {
+    /**
+     * Dictionary describing the network topics to listen to.
+     *
+     * @type {{heartbeats: string, payloads: string, notifications: string}}
+     * @private
+     */
+    topicPaths = {
+        heartbeats: '$share/$initiator/$root/ctrl',
+        notifications: '$share/$initiator/$root/notif',
+        payloads: '$share/$initiator/$root/payloads',
+    };
+
+    /**
+     * The boot options.
+     *
+     * @type {Object}
+     */
+    bootOptions = {
+        initiator: null,
+        topicRoot: 'lummetry',
+        blockchain: {
+            debug: false,
+            key: '',
+            encrypt: true,
+            secure: true,
+        },
+        stateManager: INTERNAL_STATE_MANAGER,
+        redis: {
+            host: 'localhost',
+            port: 6379,
+            password: null,
+            pubSubChannel: 'null',
+        },
+        mqttOptions: {
+            url: null,
+            username: null,
+            password: null,
+            clean: true,
+            clientId: null,
+            prefix: null,
+        },
+        customFormatters: {},
+        threads: {
+            heartbeats: 1,
+            notifications: 1,
+            payloads: 1,
+        },
+        fleet: [ALL_EDGE_NODES],
+    };
+
+    /**
+     * Internal dictionary keeping references to child threads.
+     *
+     * @type {{heartbeats: Array, payloads: Array, notifications: Array}}
+     * @private
+     */
+    threads = {
+        heartbeats: [],
+        payloads: [],
+        notifications: [],
+    };
+
+    /**
+     * The state to update.
+     *
+     * @type {State|null}
+     */
+    state = null;
+
+    /**
+     * Internal reference to the Blockchain Engine
+     *
+     * @type {ZxAIBC}
+     * @private
+     */
+    zxAIbc = null;
+
+    /**
+     * Internal dictionary keeping references to the streams of events received from the child threads.
+     *
+     * @type {Object.&lt;string, Observable>}
+     * @private
+     */
+    networkStreams = {
+        [`${HEARTBEATS_STREAM}`]: null,
+        [`${NOTIFICATIONS_STREAM}`]: null,
+        [`${PAYLOADS_STREAM}`]: null,
+    };
+
+    /**
+     * The repository of schemas to be used when interacting with instances and pipelines.
+     *
+     * @type {SchemasRepository}
+     */
+    schemas;
+
+    /**
+     * The network connection.
+     *
+     * @type {MqttClient}
+     * @private
+     */
+    mqttClient = null;
+
+    /**
+     * Reference to the logger to use.
+     *
+     * @type {Logger}
+     * @private
+     */
+    logger;
+
+    /**
+     * A dictionary with network addresses associated to node names.
+     *
+     * @private
+     * @type {*}
+     */
+    universeAddresses = {};
+
+    /**
+     * Statistics about the memory used by the SDK.
+     *
+     * @type {*}
+     */
+    memoryUsageStats = {
+        max: {
+            rss: 0,
+            heapTotal: 0,
+            heapUsed: 0,
+            external: 0,
+            arrayBuffers: 0,
+        },
+        aggregated: {
+            rss: 0,
+            heapTotal: 0,
+            heapUsed: 0,
+            external: 0,
+            arrayBuffers: 0,
+        },
+        detailed: {},
+    };
+
+    /**
+     * Dictionary of all alerted nodes.
+     *
+     * @type {AlertedNodes}
+     * @private
+     */
+    alertedNodes = {};
+
+    /**
+     * Dictionary of instance callbacks, indexed by NEN name and instance id.
+     *
+     * @type {*}
+     */
+    instanceCallbacks = {};
+
+    /**
+     * The network client constructor.
+     *
+     * @constructor
+     * @param {ZxAIClientOptions} options
+     * @param {*} logger
+     */
+    constructor(
+        options = {
+            emitterOptions: null,
+            initiator: undefined,
+            blockchain: undefined,
+            stateManager: '',
+            loglevel: '',
+            redis: undefined,
+            mqttOptions: undefined,
+            customFormatters: undefined,
+            threads: undefined,
+            fleet: [],
+        },
+        logger = null,
+    ) {
+        super(options.emitterOptions ?? {});
+
+        if (!logger) {
+            this.logger = new Logger(options.loglevel ?? 'info');
+        } else {
+            this.logger = logger;
+        }
+
+        this.schemas = defaultSchemas();
+        this.bootOptions = Object.assign(this.bootOptions, options);
+        this.bootOptions.redis.pubSubChannel = `updates-${this.bootOptions.initiator}`;
+
+        if (!options.initiator) {
+            this.bootOptions.initiator = uuidv4().substring(0, 13);
+        }
+
+        if (!this.bootOptions.stateManager || this.bootOptions.stateManager === INTERNAL_STATE_MANAGER) {
+            this.state = new State(INTERNAL_STATE_MANAGER, new InternalStateManager(), {
+                fleet: this.bootOptions.fleet,
+            });
+        } else if (this.bootOptions.stateManager === REDIS_STATE_MANAGER) {
+            this.state = new State(REDIS_STATE_MANAGER, new RedisStateManager(this.bootOptions.redis, this.logger), {
+                fleet: this.bootOptions.fleet,
+            });
+        } else {
+            throw Error('Incorrect state setup.');
+        }
+
+        this.state.on(NETWORK_STICKY_PAYLOAD_RECEIVED, this._onStateMessage(NETWORK_STICKY_PAYLOAD_RECEIVED));
+
+        Object.keys(this.bootOptions.threads).forEach((threadType) => {
+            const count = this.topicPaths[threadType] ? parseInt(this.bootOptions.threads[threadType]) : 0;
+
+            for (let i = 0; i &lt; count; i++) {
+                const threadId = uuidv4().substring(0, 13);
+                const thread = new Worker(path.join(__dirname, 'threads', 'message.thread.js'));
+
+                this.state.registerThread(threadType, thread);
+                this.threads[threadType].push({
+                    id: threadId,
+                    thread: thread,
+                });
+
+                thread.on('message', this._onThreadMessage());
+            }
+        });
+
+        Object.keys(this.threads).forEach((threadType) => {
+            const threadObservables = [];
+            this.threads[threadType].forEach((handler) => {
+                const observable = fromEvent(handler.thread, 'message');
+                threadObservables.push(observable);
+            });
+
+            this.networkStreams[threadType] = merge(...threadObservables).pipe(
+                filter((message) =>
+                    [MESSAGE_TYPE_HEARTBEAT, MESSAGE_TYPE_NOTIFICATION, MESSAGE_TYPE_PAYLOAD].includes(message.type),
+                ),
+                map((message) => ({
+                    context: message.context,
+                    data: message.data,
+                    error: message.error,
+                })),
+            );
+        });
+
+        this.zxAIbc = new ZxAIBC(this.bootOptions.blockchain);
+    }
+
+    /**
+     * Internal method for compiling the boot status for the subordinated worker threads.
+     *
+     * @return {FlatArray&lt;Object[], 1>}
+     * @private
+     */
+    checkBootComplete() {
+        return Object.keys(this.threads)
+            .map((threadType) => this.threads[threadType].map((handler) => handler.booted &amp;&amp; handler.running))
+            .flat()
+            .reduce((ok, status) => ok &amp;&amp; status, true);
+    }
+
+    /**
+     * Internal method for keeping track of worker threads statuses.
+     *
+     * @param message
+     * @private
+     */
+    markThreadStatus(message) {
+        const thread = this.threads[message.threadType].filter((handler) => handler.id === message.threadId)[0];
+        thread['booted'] = true;
+        thread['running'] = message.type === THREAD_START_OK;
+        thread['status'] = message;
+
+        this.emit(ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE, null, {
+            threadId: message.threadId,
+            event: message.type,
+            status: message.status,
+        });
+
+        if (this.checkBootComplete()) {
+            this.emit(ZxAI_CLIENT_BOOTED, {
+                event: ZxAI_CLIENT_BOOTED,
+                status: true,
+            });
+
+            this.emit(ZxAI_BC_ADDRESS, {
+                address: this.zxAIbc.getAddress(),
+            });
+        }
+    }
+
+    /**
+     * Factory method for attaching callbacks on state messages.
+     *
+     * @param {string} messageType
+     * @return {*}
+     * @private
+     */
+    _onStateMessage(messageType) {
+        const client = this;
+
+        switch (messageType) {
+            case NETWORK_STICKY_PAYLOAD_RECEIVED:
+                return (message) => {
+                    this.maybeCallInstanceCallback(message);
+
+                    client.emit(
+                        message.context.instance.signature,
+                        null, // no error
+                        message.context,
+                        message.data,
+                    );
+                };
+        }
+
+        return () => {
+            client.logger.warn(`UNDEFINED STATE MESSAGE HOOK: ${messageType}.`);
+        };
+    }
+
+    /**
+     * Internal method for processing messages received from the worker threads.
+     *
+     * @return {*}
+     * @private
+     */
+    _onThreadMessage() {
+        const state = this.state;
+        const client = this;
+
+        return (message) => {
+            switch (message.type) {
+                case 'LOGGER':
+                    // eslint-disable-next-line no-case-declarations
+                    let prefix = '';
+                    if (message.threadId !== null) {
+                        prefix = `[Thread ${message.threadId}] `;
+                    }
+
+                    switch (message.level) {
+                        case 0:
+                            client.logger.error(`${prefix}${message.message}`, message.context);
+                            break;
+                        case 1:
+                            client.logger.warn(`${prefix}${message.message}`);
+                            break;
+                        case 2:
+                        case 3:
+                            client.logger.log(`${prefix}${message.message}`);
+                            break;
+                        case 4:
+                        case 5:
+                        case 6:
+                            client.logger.debug(
+                                `${prefix}${message.message} Context: ${JSON.stringify(message.context)}`,
+                            );
+                            break;
+                    }
+
+                    break;
+                case THREAD_START_OK:
+                case THREAD_START_ERR:
+                    client.markThreadStatus(message);
+                    break;
+                case MESSAGE_TYPE_NETWORK_NODE_DOWN:
+                    // eslint-disable-next-line no-case-declarations
+                    const alertedList = message.data;
+                    if (Array.isArray(alertedList)) {
+                        const currentlyAlerted = [];
+                        alertedList.forEach((alertedNode) => {
+                            currentlyAlerted.push(alertedNode.node);
+
+                            if (
+                                !this.alertedNodes[alertedNode.node] &amp;&amp;
+                                (this.bootOptions.fleet.includes(alertedNode.node) ||
+                                    this.bootOptions.fleet.includes(ALL_EDGE_NODES))
+                            ) {
+                                client.emit(ZxAI_ENGINE_OFFLINE, {
+                                    node: alertedNode.node,
+                                });
+                            }
+
+                            this.alertedNodes[alertedNode.node] = alertedNode.lastSeen;
+                        });
+
+                        const lastAlerted = Object.keys(this.alertedNodes);
+                        lastAlerted.forEach((nodeName) => {
+                            if (!currentlyAlerted.includes(nodeName)) {
+                                delete this.alertedNodes[nodeName];
+
+                                if (
+                                    this.bootOptions.fleet.includes(nodeName) ||
+                                    this.bootOptions.fleet.includes(ALL_EDGE_NODES)
+                                ) {
+                                    client.emit(ZxAI_ENGINE_ONLINE, {
+                                        node: nodeName,
+                                    });
+                                }
+                            }
+                        });
+                    }
+                    break;
+                case MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH:
+                    this.universeAddresses = Object.assign(this.universeAddresses, message.data);
+                    break;
+                case MESSAGE_TYPE_THREAD_MEMORY_USAGE:
+                    this.memoryUsageStats.detailed[message.threadId] = message.data;
+                    break;
+                case MESSAGE_TYPE_OBSERVED_NODE:
+                    state.markNodeAsSeen(message.data.node, message.data.timestamp);
+                    break;
+                case MESSAGE_TYPE_SUPERVISOR_STATUS:
+                    state.storeNetworkInfo(message.data);
+                    break;
+                case MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD:
+                    client.emit(
+                        ZxAI_SUPERVISOR_PAYLOAD,
+                        null, // no error
+                        message.data,
+                        message.context,
+                    );
+                    break;
+                case MESSAGE_TYPE_HEARTBEAT:
+                    if (message.success &amp;&amp; message.error === null) {
+                        state.nodeInfoUpdate(message.data);
+                        this.emit(ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE, {
+                            node: message.data?.EE_PAYLOAD_PATH[0] ?? null,
+                        });
+                    }
+                    break;
+                case MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE:
+                    state.onRequestResponseNotification(state, message);
+                    break;
+                case MESSAGE_TYPE_NOTIFICATION:
+                    // TODO: should emit EXCEPTIONS and ABNORMAL FUNCTIONING
+                    break;
+                case MESSAGE_TYPE_PAYLOAD:
+                    this.maybeCallInstanceCallback(message);
+
+                    client.emit(
+                        message.context.instance.signature,
+                        null, // no error
+                        message.context,
+                        message.data,
+                    );
+                    break;
+            }
+        };
+    }
+
+    /**
+     * This method connects the client to the network and spawns all the threads on the network streams.
+     *
+     * @return {void}
+     */
+    boot() {
+        Object.keys(this.threads).forEach((threadType) => {
+            const topic = this.topicPaths[threadType].replace('$initiator', this.bootOptions.initiator).replace('$root', this.bootOptions.topicRoot);
+
+            this.threads[threadType].forEach((threadConfig, index) => {
+                this.logger.log(`[Main Thread] Booting ${threadType} thread. Id: ${threadConfig.id} Topic: ${topic}`);
+                threadConfig.thread.postMessage({
+                    id: threadConfig.id,
+                    command: THREAD_COMMAND_START,
+                    type: threadType,
+                    config: {
+                        connection: { ...this.bootOptions.mqttOptions, suffix: `${threadType.substring(0, 1)}${index}`, topic: topic },
+                        secure: true,
+                        zxaibc: this.bootOptions.blockchain,
+                        stateManager: this.bootOptions.stateManager,
+                        redis: this.bootOptions.redis,
+                        fleet: this.bootOptions.fleet,
+                    },
+                    formatters: this.bootOptions.customFormatters,
+                });
+            });
+        });
+
+        const connectionOptions = {
+            username: this.bootOptions.mqttOptions.username,
+            password: this.bootOptions.mqttOptions.password,
+            clean: this.bootOptions.mqttOptions.clean !== false,
+            clientId: (this.bootOptions.mqttOptions.clientId !== undefined &amp;&amp; this.bootOptions.mqttOptions.clientId !== null)
+                ? `${this.bootOptions.mqttOptions.prefix}_${this.bootOptions.mqttOptions.clientId}_mt`
+                : null,
+
+        };
+
+        this.mqttClient = mqtt.connect(this.bootOptions.mqttOptions.url, connectionOptions);
+
+        this.mqttClient.on('connect', () => {
+            this.logger.log(`[Main Thread] Successfully connected to MQTT at "${this.bootOptions.mqttOptions.url}" with (clean=${connectionOptions.clean};clientId=${connectionOptions.clientId}).`);
+        });
+
+        this.mqttClient.on('error', () => {
+            this.logger.warn('[Main Thread] Could not connect to MQTT.');
+        });
+
+        this.logger.log(`[Main Thread] Blockchain Address: ${this.zxAIbc.getAddress()}`);
+
+        setInterval(() => {
+            // eslint-disable-next-line no-undef
+            this.memoryUsageStats.detailed['main-thread'] = process.memoryUsage();
+
+            const aggregated = {
+                rss: this.memoryUsageStats.detailed['main-thread'].rss,
+                heapTotal: 0,
+                heapUsed: 0,
+                external: 0,
+                arrayBuffers: 0,
+            };
+            Object.keys(this.memoryUsageStats.detailed).forEach((threadId) => {
+                aggregated.heapTotal += this.memoryUsageStats.detailed[threadId].heapTotal;
+                aggregated.heapUsed += this.memoryUsageStats.detailed[threadId].heapUsed;
+                aggregated.external += this.memoryUsageStats.detailed[threadId].external;
+                aggregated.arrayBuffers += this.memoryUsageStats.detailed[threadId].arrayBuffers;
+            });
+
+            if (this.memoryUsageStats.max.rss &lt; aggregated.rss) {
+                this.memoryUsageStats.max.rss = aggregated.rss;
+            }
+
+            if (this.memoryUsageStats.max.heapTotal &lt; aggregated.heapTotal) {
+                this.memoryUsageStats.max.heapTotal = aggregated.heapTotal;
+            }
+
+            if (this.memoryUsageStats.max.heapUsed &lt; aggregated.heapUsed) {
+                this.memoryUsageStats.max.heapUsed = aggregated.heapUsed;
+            }
+
+            if (this.memoryUsageStats.max.external &lt; aggregated.external) {
+                this.memoryUsageStats.max.external = aggregated.external;
+            }
+
+            if (this.memoryUsageStats.max.arrayBuffers &lt; aggregated.arrayBuffers) {
+                this.memoryUsageStats.max.arrayBuffers = aggregated.arrayBuffers;
+            }
+
+            this.memoryUsageStats.aggregated = aggregated;
+
+            Object.keys(this.threads).forEach((threadType) => {
+                this.threads[threadType].forEach((threadConfig) => {
+                    threadConfig.thread.postMessage({
+                        command: THREAD_COMMAND_MEMORY_USAGE,
+                    });
+                });
+            });
+        }, 10000);
+
+        // TODO: should listen for OK signal received from each thread
+        // TODO: should emit booted
+    }
+
+    /**
+     * Returns the snapshot of the memory usage.
+     *
+     * @return {Object}
+     */
+    getMemoryStats() {
+        return this.memoryUsageStats;
+    }
+
+    // TODO: implement shutdown
+    shutdown() {}
+
+    /**
+     * This method returns the initiator name used for the connection.
+     *
+     * @return {string} initiator name
+     */
+    getName() {
+        return this.bootOptions.initiator;
+    }
+
+    loadIdentity(identityPrivateKey) {
+        return this.zxAIbc.loadIdentity(identityPrivateKey);
+    }
+
+    /**
+     * This method returns the NaeuralEdgeProtocol Network unique blockchain address.
+     *
+     * @return {string} NaeuralEdgeProtocol Network address
+     */
+    getBlockChainAddress() {
+        return this.zxAIbc.getAddress();
+    }
+
+    // TODO: implement register message decoder
+    registerMessageDecoder(name, path) {
+        console.log(name, path);
+    }
+
+    /**
+     * Method for registering a new network node without rebooting the client.
+     *
+     * @param {string} node The node to register.
+     * @return {void}
+     */
+    registerEdgeNode(node) {
+        if (!this.bootOptions.fleet.includes(node)) {
+            this.bootOptions.fleet.push(node);
+            this.state.broadcastUpdateFleet(this.bootOptions.fleet);
+            this.emit(ZxAI_ENGINE_REGISTERED, {
+                executionEngine: node, // deprecated
+                node: node,
+            });
+        }
+    }
+
+    /**
+     * Method for deregistering a network node without rebooting the client.
+     *
+     * @param {string} node The node to register.
+     * @return {void}
+     */
+    deregisterEdgeNode(node) {
+        if (this.bootOptions.fleet.includes(node)) {
+            this.bootOptions.fleet.splice(this.bootOptions.fleet.indexOf(node), 1);
+            this.state.broadcastUpdateFleet(this.bootOptions.fleet);
+
+            this.emit(ZxAI_ENGINE_DEREGISTERED, {
+                executionEngine: node, // deprecated
+                node: node,
+            });
+        }
+    }
+
+    /**
+     * Method for retrieving the status of the fleet of network nodes that are processed by this instance.
+     *
+     * @return {Promise&lt;Array&lt;NodeStatus>>} The Fleet Status
+     */
+    async getFleet() {
+        return this.state.getFleet();
+    }
+
+    /**
+     * Returns the current network status as seen by the specified supervisor.
+     * If `supervisor` is null, it returns the latest information received.
+     *
+     * @param supervisor
+     * @return {Promise&lt;Object>}
+     */
+    async getNetworkStatus(supervisor = null) {
+        return this.state.getNetworkStatus(supervisor);
+    }
+
+    /**
+     * Get the list of network supervisors.
+     *
+     * @return {Promise&lt;string[]>}
+     */
+    async getSupervisors() {
+        return this.state.getNetworkSupervisors();
+    }
+
+    /**
+     * Returns a list of all the registered DCT Schemas.
+     *
+     * @return {Array&lt;AvailableDCTResponse>}
+     */
+    getRegisteredDCTTypes() {
+        return Object.keys(this.schemas.dct).map((key) => ({
+            type: this.schemas.dct[key].type,
+            name: this.schemas.dct[key].name,
+            description: this.schemas.dct[key].description,
+        }));
+    }
+
+    /**
+     * Allows for hot registration of a new DCT Schema to be used by the network client.
+     *
+     * @param {string} name
+     * @param {SchemaDefinition} schema
+     * @return {ZxAIClient}
+     */
+    registerDCTType(name, schema) {
+        if (!this.schemas.dct) {
+            this.schemas.dct = {};
+        }
+
+        this.schemas.dct[name] = schema;
+
+        // TODO: hot registration should notify child threads and other processes
+        return this;
+    }
+
+    /**
+     * Returns the schema associated to a DCT name.
+     *
+     * @param {string} dctName
+     * @return {SchemaDefinition|null}
+     */
+    getDCTSchema(dctName) {
+        return this.schemas?.dct[dctName] ?? null;
+    }
+
+    /**
+     * Returns the list of Plugin Schemas associated to this network client.
+     *
+     * @return {Array&lt;AvailableSchemaResponse>}
+     */
+    getRegisteredPluginTypes() {
+        return Object.keys(this.schemas.plugins)
+            .filter((signature) => signature !== REST_CUSTOM_EXEC_SIGNATURE)
+            .map((signature) => ({
+                signature,
+                name: this.schemas.plugins[signature].name,
+                description: this.schemas.plugins[signature].description,
+                linkable: this.schemas.plugins[signature].options?.linkable ?? false,
+            }));
+    }
+
+    /**
+     * Returns the loaded schema for a specific plugin `signature`.
+     *
+     * @param signature
+     * @return {SchemaDefinition|null}
+     */
+    getPluginSchema(signature) {
+        return this.schemas?.plugins[signature] ?? null;
+    }
+
+    /**
+     * Associates a schema with a plugin `signature`.
+     *
+     * @param {string} signature
+     * @param {Object} schema
+     * @return {ZxAIClient}
+     */
+    registerPluginSchema(signature, schema) {
+        this.schemas.plugins[signature] = schema;
+
+        this.logger.log(`[Main Thread] Successfully registered schema for ${signature}.`);
+
+        return this;
+    }
+
+    /**
+     * Returns a specific stream of events in the network. It can offer a window inside all the messages published
+     * in a specific message type category.
+     *
+     * @param stream
+     * @return {Observable|null} a subscribable stream with the selected event type.
+     */
+    getStream(stream) {
+        return this.networkStreams[stream] ?? null;
+    }
+
+    /**
+     * Sets a custom callback for a specific instance.
+     *
+     * @param {string} node
+     * @param {PluginInstance|string} instance
+     * @param callback
+     * @return {ZxAIClient}
+     */
+    setInstanceCallback(node, instance, callback) {
+        if (!this.instanceCallbacks[node]) {
+            this.instanceCallbacks[node] = {};
+        }
+
+        let instanceName = null;
+        if (typeof instance === 'string') {
+            instanceName = instance;
+        } else if (typeof instance === 'object' &amp;&amp; Object.hasOwn(instance, 'id')) {
+            instanceName = instance.id;
+        } else {
+            throw new Error('Invalid instance provided for attaching callback.');
+        }
+
+        if (!this.instanceCallbacks[node][instanceName]) {
+            this.instanceCallbacks[node][instanceName] = null;
+        }
+
+        this.instanceCallbacks[node][instanceName] = callback;
+
+        return this;
+    }
+
+    /**
+     * Returns the client's observable universe: all the hosts that sent a heartbeat that are outside
+     * this client's fleet.
+     *
+     * @return {Promise&lt;ObservedNodes>}
+     */
+    async getUniverse() {
+        return this.state.getUniverse();
+    }
+
+    /**
+     * Returns a `NodeManager` for a specific node.
+     *
+     * @param node
+     * @return {Promise&lt;NodeManager|null>}
+     */
+    async getNodeManager(node) {
+        if (await this._checkNode(node)) {
+            return NodeManager.getNodeManager(this, node, this.logger);
+        }
+
+        return null;
+    }
+
+    /**
+     * Method for publishing a message for an NaeuralEdgeProtocol Node.
+     *
+     * @param {string} node
+     * @param {Object} message
+     * @param {Array&lt;Array&lt;string>>} extraWatches
+     * @return {Promise&lt;unknown>}
+     */
+    publish(node, message, extraWatches = []) {
+        if (!message) {
+            return new Promise((resolve) => {
+                resolve({
+                    data: {
+                        notification: 'Already closed.',
+                    },
+                });
+            });
+        }
+
+        message['INITIATOR_ID'] = this.bootOptions.initiator;
+        message['EE_ID'] = node;
+        message['TIME'] = new Date();
+
+        const watches = [];
+        if (extraWatches.length > 0) {
+            extraWatches.forEach((watch) => {
+                watches.push(watch);
+            });
+        }
+
+        let stickyId = null;
+        switch (message['ACTION']) {
+            case NODE_COMMAND_UPDATE_PIPELINE_INSTANCE:
+                if (
+                    Object.hasOwn(message.PAYLOAD, 'INSTANCE_CONFIG') &amp;&amp;
+                    Object.hasOwn(message.PAYLOAD.INSTANCE_CONFIG, 'INSTANCE_COMMAND') &amp;&amp;
+                    message.PAYLOAD.INSTANCE_CONFIG.INSTANCE_COMMAND[STICKY_COMMAND_ID_KEY] !== undefined
+                ) {
+                    stickyId = message.PAYLOAD.INSTANCE_CONFIG.INSTANCE_COMMAND[STICKY_COMMAND_ID_KEY];
+                }
+
+                watches.push([
+                    node,
+                    message['PAYLOAD']['NAME'],
+                    message['PAYLOAD']['SIGNATURE'],
+                    message['PAYLOAD']['INSTANCE_ID'],
+                ]);
+                break;
+            case NODE_COMMAND_UPDATE_CONFIG:
+            case NODE_COMMAND_PIPELINE_COMMAND:
+                if (
+                    Object.hasOwn(message.PAYLOAD, 'PIPELINE_COMMAND') &amp;&amp;
+                    message.PAYLOAD.PIPELINE_COMMAND[STICKY_COMMAND_ID_KEY] !== undefined
+                ) {
+                    stickyId = message.PAYLOAD.PIPELINE_COMMAND[STICKY_COMMAND_ID_KEY];
+                }
+
+                watches.push([node, message['PAYLOAD']['NAME'], null, null]);
+
+                break;
+            case NODE_COMMAND_ARCHIVE_CONFIG:
+                watches.push([node, message['PAYLOAD'], null, null]);
+
+                break;
+            case NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE:
+                message['PAYLOAD'].forEach((updateInstanceCommand) => {
+                    watches.push([
+                        node,
+                        updateInstanceCommand['NAME'],
+                        updateInstanceCommand['SIGNATURE'],
+                        updateInstanceCommand['INSTANCE_ID'],
+                    ]);
+                });
+
+                break;
+        }
+
+        const mqttConnection = this.mqttClient;
+        const blockchainEngine = this.zxAIbc;
+
+        return new Promise((resolve, reject) => {
+            const request = this.state.registerMessage(message, watches, resolve, reject);
+
+            if (stickyId) {
+                this.state.broadcastPayloadStickySession(stickyId);
+            }
+
+            message['SESSION_ID'] = request.getId();
+
+            let toSend = { ...message };
+            if (this.bootOptions.blockchain.encrypt === true) {
+                const encrypted = blockchainEngine.encrypt(
+                    JSON.stringify({
+                        ACTION: message.ACTION,
+                        PAYLOAD: message.PAYLOAD,
+                    }),
+                    this.universeAddresses[node],
+                );
+
+                toSend = {
+                    EE_IS_ENCRYPTED: true,
+                    EE_ENCRYPTED_DATA: encrypted,
+                    INITIATOR_ID: message.INITIATOR_ID,
+                    SESSION_ID: message.SESSION_ID,
+                    EE_ID: message.EE_ID,
+                    TIME: message.TIME,
+                };
+            }
+
+            mqttConnection.publish(`${this.bootOptions.topicRoot}/${node}/config`, blockchainEngine.sign(toSend));
+
+            if (watches.length === 0) {
+                resolve({
+                    DATA: {
+                        NOTIFICATION: `${message['ACTION']} command sent.`,
+                    },
+                });
+            }
+        });
+    }
+
+    /**
+     * Private method for checking if a specified node is in the controlled fleet or if it's heartbeat has been
+     * witnessed.
+     *
+     * @param {string} node
+     * @return {Promise&lt;boolean>}
+     * @private
+     */
+    async _checkNode(node) {
+        let filtered = true;
+        if (this.bootOptions.fleet.length === 1 &amp;&amp; this.bootOptions.fleet[0] === ALL_EDGE_NODES) {
+            filtered = false;
+        }
+
+        if (filtered &amp;&amp; !this.bootOptions.fleet.includes(node)) {
+            this.logger.error(`[Main Thread] Node ${node} is not registered in the working fleet.`);
+
+            return false;
+        }
+
+        if (this.alertedNodes[node]) {
+            this.logger.error(`[Main Thread] Node ${node} is offline.`);
+
+            return false;
+        }
+
+        const universe = await this.getUniverse();
+        if (!universe[node]) {
+            this.logger.error(`[Main Thread] Node ${node} is either offline or no heartbeat has been witnessed yet.`);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    maybeCallInstanceCallback(message) {
+        if (this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]] !== null &amp;&amp;
+            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]] !== undefined &amp;&amp;
+            message.context.metadata.EE_PAYLOAD_PATH[3] !== null &amp;&amp;
+            typeof message.context.metadata.EE_PAYLOAD_PATH[3] === 'string' &amp;&amp;
+            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] !== null &amp;&amp;
+            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] !== undefined &amp;&amp;
+            typeof this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] === 'function'
+        ) {
+            let err = null;
+            let context = message.context;
+            let data = message.data;
+
+            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]](err, context, data);
+        }
+    }
+}
+</code></pre></article></section></div></div></div><div class="search-container" id="PkfLWpAbet" style="display:none"><div class="wrapper" id="iCxFxjkHbP"><button class="icon-button search-close-button" id="VjLlGakifb" aria-label="close search"><svg><use xlink:href="#close-icon"></use></svg></button><div class="search-box-c"><svg><use xlink:href="#search-icon"></use></svg> <input type="text" id="vpcKVYIppa" class="search-input" placeholder="Search..." autofocus></div><div class="search-result-c" id="fWwVHRuDuN"><span class="search-result-c-text">Type anything to view search result</span></div></div></div><div class="mobile-menu-icon-container"><button class="icon-button" id="mobile-menu" data-isopen="false" aria-label="menu"><svg><use xlink:href="#menu-icon"></use></svg></button></div><div id="mobile-sidebar" class="mobile-sidebar-container"><div class="mobile-sidebar-wrapper"><a href="/" class="sidebar-title sidebar-title-anchor">Home</a><div class="mobile-nav-links"></div><div class="mobile-sidebar-items-c"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DataCaptureThread.html">DataCaptureThread</a></div><div class="sidebar-section-children"><a href="InternalStateManager.html">InternalStateManager</a></div><div class="sidebar-section-children"><a href="Logger.html">Logger</a></div><div class="sidebar-section-children"><a href="NetworkRequest.html">NetworkRequest</a></div><div class="sidebar-section-children"><a href="NetworkRequestsHandler.html">NetworkRequestsHandler</a></div><div class="sidebar-section-children"><a href="NodeManager.html">NodeManager</a></div><div class="sidebar-section-children"><a href="Pipeline.html">Pipeline</a></div><div class="sidebar-section-children"><a href="PluginInstance.html">PluginInstance</a></div><div class="sidebar-section-children"><a href="RedisStateManager.html">RedisStateManager</a></div><div class="sidebar-section-children"><a href="State.html">State</a></div><div class="sidebar-section-children"><a href="ZxAIBC.html">ZxAIBC</a></div><div class="sidebar-section-children"><a href="ZxAIClient.html">ZxAIClient</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#AlertedNodes">AlertedNodes</a></div><div class="sidebar-section-children"><a href="global.html#AllowedValues">AllowedValues</a></div><div class="sidebar-section-children"><a href="global.html#AvailableDCTResponse">AvailableDCTResponse</a></div><div class="sidebar-section-children"><a href="global.html#AvailableSchemaResponse">AvailableSchemaResponse</a></div><div class="sidebar-section-children"><a href="global.html#Field">Field</a></div><div class="sidebar-section-children"><a href="global.html#IntervalDefinition">IntervalDefinition</a></div><div class="sidebar-section-children"><a href="global.html#IsObject">IsObject</a></div><div class="sidebar-section-children"><a href="global.html#NodeStatus">NodeStatus</a></div><div class="sidebar-section-children"><a href="global.html#ObservedNodes">ObservedNodes</a></div><div class="sidebar-section-children"><a href="global.html#RedisConnectionOptions">RedisConnectionOptions</a></div><div class="sidebar-section-children"><a href="global.html#SchemaCollection">SchemaCollection</a></div><div class="sidebar-section-children"><a href="global.html#SchemaDefinition">SchemaDefinition</a></div><div class="sidebar-section-children"><a href="global.html#SchemasRepository">SchemasRepository</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIBlockchainOptions">ZxAIBlockchainOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientEvent">ZxAIClientEvent</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientOptions">ZxAIClientOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAICommand">ZxAICommand</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIEventType">ZxAIEventType</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIUpdateInstanceConfig">ZxAIUpdateInstanceConfig</a></div><div class="sidebar-section-children"><a href="global.html#applyDefaultsToObject">applyDefaultsToObject</a></div><div class="sidebar-section-children"><a href="global.html#archiveConfigRequestStrategy">archiveConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#base64ToUrlSafeBase64">base64ToUrlSafeBase64</a></div><div class="sidebar-section-children"><a href="global.html#camelToZxAIFormat">camelToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#checkMandatoryFields">checkMandatoryFields</a></div><div class="sidebar-section-children"><a href="global.html#checkType">checkType</a></div><div class="sidebar-section-children"><a href="global.html#computeDifferences">computeDifferences</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToCamelFormat">convertKeysToCamelFormat</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToZxAIFormat">convertKeysToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#dctSchemas">dctSchemas</a></div><div class="sidebar-section-children"><a href="global.html#decode">decode</a></div><div class="sidebar-section-children"><a href="global.html#defaultSchemas">defaultSchemas</a></div><div class="sidebar-section-children"><a href="global.html#encode">encode</a></div><div class="sidebar-section-children"><a href="global.html#generateId">generateId</a></div><div class="sidebar-section-children"><a href="global.html#getRedisConnection">getRedisConnection</a></div><div class="sidebar-section-children"><a href="global.html#hasFleetFilter">hasFleetFilter</a></div><div class="sidebar-section-children"><a href="global.html#identityFormatter">identityFormatter</a></div><div class="sidebar-section-children"><a href="global.html#pick">pick</a></div><div class="sidebar-section-children"><a href="global.html#pluginDefinition">pluginDefinition</a></div><div class="sidebar-section-children"><a href="global.html#pluginSchemas">pluginSchemas</a></div><div class="sidebar-section-children"><a href="global.html#rawIn">rawIn</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schemas">schemas</a></div><div class="sidebar-section-children"><a href="global.html#sleep">sleep</a></div><div class="sidebar-section-children"><a href="global.html#updateConfigRequestStrategy">updateConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#updatePipelineInstanceRequestStrategy">updatePipelineInstanceRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#urlSafeBase64ToBase64">urlSafeBase64ToBase64</a></div><div class="sidebar-section-children"><a href="global.html#validateAgainstSchema">validateAgainstSchema</a></div><div class="sidebar-section-children"><a href="global.html#zxAIFormatToCamel">zxAIFormatToCamel</a></div></div></div><div class="mobile-navbar-actions"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div></div></div><script type="text/javascript" src="scripts/core.min.js"></script><script src="scripts/search.min.js" defer="defer"></script><script src="scripts/third-party/fuse.js" defer="defer"></script><script type="text/javascript">var tocbotInstance=tocbot.init({tocSelector:"#eed4d2a0bfd64539bb9df78095dec881",contentSelector:".main-content",headingSelector:"h1, h2, h3",hasInnerContainers:!0,scrollContainer:".main-content",headingsOffset:130,onClick:bringLinkToView})</script></body></html>

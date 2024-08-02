@@ -1,0 +1,553 @@
+<!DOCTYPE html><html lang="en" style="font-size:16px"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Source: utils/blockchain.js</title><!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]--><script src="scripts/third-party/hljs.js" defer="defer"></script><script src="scripts/third-party/hljs-line-num.js" defer="defer"></script><script src="scripts/third-party/popper.js" defer="defer"></script><script src="scripts/third-party/tippy.js" defer="defer"></script><script src="scripts/third-party/tocbot.min.js"></script><script>var baseURL="/",locationPathname="";baseURL=(locationPathname=document.location.pathname).substr(0,locationPathname.lastIndexOf("/")+1)</script><link rel="stylesheet" href="styles/clean-jsdoc-theme.min.css"><svg aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display:none"><defs><symbol id="copy-icon" viewbox="0 0 488.3 488.3"><g><path d="M314.25,85.4h-227c-21.3,0-38.6,17.3-38.6,38.6v325.7c0,21.3,17.3,38.6,38.6,38.6h227c21.3,0,38.6-17.3,38.6-38.6V124    C352.75,102.7,335.45,85.4,314.25,85.4z M325.75,449.6c0,6.4-5.2,11.6-11.6,11.6h-227c-6.4,0-11.6-5.2-11.6-11.6V124    c0-6.4,5.2-11.6,11.6-11.6h227c6.4,0,11.6,5.2,11.6,11.6V449.6z"/><path d="M401.05,0h-227c-21.3,0-38.6,17.3-38.6,38.6c0,7.5,6,13.5,13.5,13.5s13.5-6,13.5-13.5c0-6.4,5.2-11.6,11.6-11.6h227    c6.4,0,11.6,5.2,11.6,11.6v325.7c0,6.4-5.2,11.6-11.6,11.6c-7.5,0-13.5,6-13.5,13.5s6,13.5,13.5,13.5c21.3,0,38.6-17.3,38.6-38.6    V38.6C439.65,17.3,422.35,0,401.05,0z"/></g></symbol><symbol id="search-icon" viewBox="0 0 512 512"><g><g><path d="M225.474,0C101.151,0,0,101.151,0,225.474c0,124.33,101.151,225.474,225.474,225.474    c124.33,0,225.474-101.144,225.474-225.474C450.948,101.151,349.804,0,225.474,0z M225.474,409.323    c-101.373,0-183.848-82.475-183.848-183.848S124.101,41.626,225.474,41.626s183.848,82.475,183.848,183.848    S326.847,409.323,225.474,409.323z"/></g></g><g><g><path d="M505.902,476.472L386.574,357.144c-8.131-8.131-21.299-8.131-29.43,0c-8.131,8.124-8.131,21.306,0,29.43l119.328,119.328    c4.065,4.065,9.387,6.098,14.715,6.098c5.321,0,10.649-2.033,14.715-6.098C514.033,497.778,514.033,484.596,505.902,476.472z"/></g></g></symbol><symbol id="font-size-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M11.246 15H4.754l-2 5H.6L7 4h2l6.4 16h-2.154l-2-5zm-.8-2L8 6.885 5.554 13h4.892zM21 12.535V12h2v8h-2v-.535a4 4 0 1 1 0-6.93zM19 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></symbol><symbol id="add-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></symbol><symbol id="minus-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M5 11h14v2H5z"/></symbol><symbol id="dark-theme-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"/></symbol><symbol id="light-theme-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"/></symbol><symbol id="reset-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M18.537 19.567A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3a8 8 0 1 0-2.46 5.772l.997 1.795z"/></symbol><symbol id="down-icon" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.7803 6.21967C13.0732 6.51256 13.0732 6.98744 12.7803 7.28033L8.53033 11.5303C8.23744 11.8232 7.76256 11.8232 7.46967 11.5303L3.21967 7.28033C2.92678 6.98744 2.92678 6.51256 3.21967 6.21967C3.51256 5.92678 3.98744 5.92678 4.28033 6.21967L8 9.93934L11.7197 6.21967C12.0126 5.92678 12.4874 5.92678 12.7803 6.21967Z"></path></symbol><symbol id="codepen-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M16.5 13.202L13 15.535v3.596L19.197 15 16.5 13.202zM14.697 12L12 10.202 9.303 12 12 13.798 14.697 12zM20 10.869L18.303 12 20 13.131V10.87zM19.197 9L13 4.869v3.596l3.5 2.333L19.197 9zM7.5 10.798L11 8.465V4.869L4.803 9 7.5 10.798zM4.803 15L11 19.131v-3.596l-3.5-2.333L4.803 15zM4 13.131L5.697 12 4 10.869v2.262zM2 9a1 1 0 0 1 .445-.832l9-6a1 1 0 0 1 1.11 0l9 6A1 1 0 0 1 22 9v6a1 1 0 0 1-.445.832l-9 6a1 1 0 0 1-1.11 0l-9-6A1 1 0 0 1 2 15V9z"/></symbol><symbol id="close-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 10.586l4.95-4.95 1.414 1.414-4.95 4.95 4.95 4.95-1.414 1.414-4.95-4.95-4.95 4.95-1.414-1.414 4.95-4.95-4.95-4.95L7.05 5.636z"/></symbol><symbol id="menu-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></symbol></defs></svg></head><body data-theme="dark"><div class="sidebar-container"><div class="sidebar" id="sidebar"><a href="/" class="sidebar-title sidebar-title-anchor">Home</a><div class="sidebar-items-container"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DataCaptureThread.html">DataCaptureThread</a></div><div class="sidebar-section-children"><a href="InternalStateManager.html">InternalStateManager</a></div><div class="sidebar-section-children"><a href="Logger.html">Logger</a></div><div class="sidebar-section-children"><a href="NetworkRequest.html">NetworkRequest</a></div><div class="sidebar-section-children"><a href="NetworkRequestsHandler.html">NetworkRequestsHandler</a></div><div class="sidebar-section-children"><a href="NodeManager.html">NodeManager</a></div><div class="sidebar-section-children"><a href="Pipeline.html">Pipeline</a></div><div class="sidebar-section-children"><a href="PluginInstance.html">PluginInstance</a></div><div class="sidebar-section-children"><a href="RedisStateManager.html">RedisStateManager</a></div><div class="sidebar-section-children"><a href="State.html">State</a></div><div class="sidebar-section-children"><a href="ZxAIBC.html">ZxAIBC</a></div><div class="sidebar-section-children"><a href="ZxAIClient.html">ZxAIClient</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#AlertedNodes">AlertedNodes</a></div><div class="sidebar-section-children"><a href="global.html#AllowedValues">AllowedValues</a></div><div class="sidebar-section-children"><a href="global.html#AvailableDCTResponse">AvailableDCTResponse</a></div><div class="sidebar-section-children"><a href="global.html#AvailableSchemaResponse">AvailableSchemaResponse</a></div><div class="sidebar-section-children"><a href="global.html#Field">Field</a></div><div class="sidebar-section-children"><a href="global.html#IntervalDefinition">IntervalDefinition</a></div><div class="sidebar-section-children"><a href="global.html#IsObject">IsObject</a></div><div class="sidebar-section-children"><a href="global.html#NodeStatus">NodeStatus</a></div><div class="sidebar-section-children"><a href="global.html#ObservedNodes">ObservedNodes</a></div><div class="sidebar-section-children"><a href="global.html#RedisConnectionOptions">RedisConnectionOptions</a></div><div class="sidebar-section-children"><a href="global.html#SchemaCollection">SchemaCollection</a></div><div class="sidebar-section-children"><a href="global.html#SchemaDefinition">SchemaDefinition</a></div><div class="sidebar-section-children"><a href="global.html#SchemasRepository">SchemasRepository</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIBlockchainOptions">ZxAIBlockchainOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientEvent">ZxAIClientEvent</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientOptions">ZxAIClientOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAICommand">ZxAICommand</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIEventType">ZxAIEventType</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIUpdateInstanceConfig">ZxAIUpdateInstanceConfig</a></div><div class="sidebar-section-children"><a href="global.html#applyDefaultsToObject">applyDefaultsToObject</a></div><div class="sidebar-section-children"><a href="global.html#archiveConfigRequestStrategy">archiveConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#base64ToUrlSafeBase64">base64ToUrlSafeBase64</a></div><div class="sidebar-section-children"><a href="global.html#camelToZxAIFormat">camelToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#checkMandatoryFields">checkMandatoryFields</a></div><div class="sidebar-section-children"><a href="global.html#checkType">checkType</a></div><div class="sidebar-section-children"><a href="global.html#computeDifferences">computeDifferences</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToCamelFormat">convertKeysToCamelFormat</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToZxAIFormat">convertKeysToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#dctSchemas">dctSchemas</a></div><div class="sidebar-section-children"><a href="global.html#decode">decode</a></div><div class="sidebar-section-children"><a href="global.html#defaultSchemas">defaultSchemas</a></div><div class="sidebar-section-children"><a href="global.html#encode">encode</a></div><div class="sidebar-section-children"><a href="global.html#generateId">generateId</a></div><div class="sidebar-section-children"><a href="global.html#getRedisConnection">getRedisConnection</a></div><div class="sidebar-section-children"><a href="global.html#hasFleetFilter">hasFleetFilter</a></div><div class="sidebar-section-children"><a href="global.html#identityFormatter">identityFormatter</a></div><div class="sidebar-section-children"><a href="global.html#pick">pick</a></div><div class="sidebar-section-children"><a href="global.html#pluginDefinition">pluginDefinition</a></div><div class="sidebar-section-children"><a href="global.html#pluginSchemas">pluginSchemas</a></div><div class="sidebar-section-children"><a href="global.html#rawIn">rawIn</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schemas">schemas</a></div><div class="sidebar-section-children"><a href="global.html#sleep">sleep</a></div><div class="sidebar-section-children"><a href="global.html#updateConfigRequestStrategy">updateConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#updatePipelineInstanceRequestStrategy">updatePipelineInstanceRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#urlSafeBase64ToBase64">urlSafeBase64ToBase64</a></div><div class="sidebar-section-children"><a href="global.html#validateAgainstSchema">validateAgainstSchema</a></div><div class="sidebar-section-children"><a href="global.html#zxAIFormatToCamel">zxAIFormatToCamel</a></div></div></div></div></div><div class="navbar-container" id="VuAckcnZhf"><nav class="navbar"><div class="navbar-left-items"></div><div class="navbar-right-items"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div><nav></nav></nav></div><div class="toc-container"><div class="toc-content"><span class="bold">On this page</span><div id="eed4d2a0bfd64539bb9df78095dec881"></div></div></div><div class="body-wrapper"><div class="main-content"><div class="main-wrapper"><section id="source-page" class="source-page"><header><h1 id="title" class="has-anchor">utils_blockchain.js</h1></header><article><pre class="prettyprint source lang-js"><code>import * as crypto from 'crypto';
+import asn1 from 'asn1.js/lib/asn1.js';
+import stringify from 'json-stable-stringify';
+import { base64ToUrlSafeBase64, urlSafeBase64ToBase64 } from './helper.functions.js';
+import { Buffer } from 'node:buffer';
+import elliptic from 'elliptic';
+import hkdf from 'futoin-hkdf';
+import { words } from './words.js';
+
+const ec = new elliptic.ec('secp256k1');
+const EE_SIGN = 'EE_SIGN';
+const EE_SENDER = 'EE_SENDER';
+const EE_HASH = 'EE_HASH';
+const ADDR_PREFIX = '0xai_';
+const ALLOWED_PREFIXES = ['0xai_', 'aixp_'];
+const NON_DATA_FIELDS = [EE_SIGN, EE_SENDER, EE_HASH];
+
+const SPKI = asn1.define('SPKI', function () {
+    this.seq().obj(
+        this.key('algorithm').seq().obj(this.key('id').objid(), this.key('namedCurve').objid()),
+        this.key('publicKey').bitstr(),
+    );
+});
+
+const ECPrivateKey = asn1.define('ECPrivateKey', function () {
+    this.seq().obj(
+        this.key('version').int(),
+        this.key('privateKey').octstr(),
+        this.key('publicKey').explicit(1).optional().bitstr()
+    );
+});
+
+const PKCS8 = asn1.define('PKCS8', function () {
+    this.seq().obj(
+        this.key('version').int(),
+        this.key('privateKeyAlgorithm').seq().obj(
+            this.key('algorithm').objid(),
+            this.key('parameters').objid()
+        ),
+        this.key('privateKey').octstr(),
+    );
+});
+
+
+/**
+ * @typedef {Object} ZxAIBlockchainOptions
+ * @property {boolean} [debug] - Indicates if debugging is enabled.
+ * @property {string} [key] - The key for the blockchain.
+ * @property {boolean} [encrypt] - Indicates if encryption is enabled.
+ * @property {boolean} [secure] - Indicates if the connection should be secure.
+ */
+
+/**
+ * @class ZxAIBC
+ *
+ * This is the NaeuralEdgeProtocol Network Blockchain engine. Its purpose is to offer any integrator common features like
+ * signature checking, message validation or key pair generation.
+ */
+export class ZxAIBC {
+    /**
+     * The keypair that is in use.
+     *
+     * @type {{privateKey: crypto.KeyObject, publicKey: crypto.KeyObject}}
+     * @private
+     */
+    keyPair;
+
+    /**
+     * A handy cache for the public key.
+     *
+     * @type {string}
+     * @private
+     */
+    compressedPublicKey = '';
+
+    /**
+     * Flag to boot the engine in debug mode. Will output signature verification logs.
+     *
+     * @type {boolean}
+     * @private
+     */
+    debugMode = false;
+
+    /**
+     * NaeuralEdgeProtocol Network Blockchain engine constructor.
+     *
+     * @param {ZxAIBlockchainOptions} options
+     */
+    constructor(options) {
+        if (options.key) {
+            this.keyPair = ZxAIBC.deriveKeyPairFromDERHex(options.key);
+        } else {
+            this.keyPair = ZxAIBC.generateKeys();
+        }
+
+        this.debugMode = options.debug || false;
+        this.compressedPublicKey = ZxAIBC.compressPublicKeyObject(this.keyPair.publicKey);
+
+        if (this.debugMode) {
+            console.log('NaeuralEdgeProtocol Blockchain address: ' + this.getAddress());
+        }
+    }
+
+    /**
+     * Generates a pair of public-private keys that can be used throughout this module
+     * or when interacting with the network.
+     *
+     * @return {crypto.KeyPairKeyObjectResult} the keypair
+     */
+    static generateKeys() {
+        return crypto.generateKeyPairSync('ec', {
+            namedCurve: 'secp256k1',
+        });
+    }
+
+    static deriveKeyPairFromDERHex(hexString) {
+        const privateKeyBuffer = Buffer.from(hexString, 'hex');
+        const privateKey = crypto.createPrivateKey({
+            key: privateKeyBuffer,
+            format: 'der',
+            type: 'pkcs8',
+        });
+
+        const publicKey = crypto.createPublicKey(privateKey);
+
+        return {
+            privateKey,
+            publicKey,
+        };
+    }
+
+    static publicKeyObjectToECKeyPair(publicKey) {
+        const key = Buffer.from(publicKey.export({ type: 'spki', format: 'der' }));
+        const publicKeyBytes = SPKI.decode(key, 'der').publicKey.data;
+
+        return ec.keyFromPublic(publicKeyBytes, 'hex');
+    }
+
+    static privateKeyObjectToECKeyPair(privateKeyObject) {
+        const hexPrivKey = Buffer.from(privateKeyObject.export({ type: 'pkcs8', format: 'der' }));
+        const definition = PKCS8.decode(hexPrivKey, 'der');
+        const keyData = ECPrivateKey.decode(definition.privateKey, 'der');
+
+        return ec.keyFromPrivate(keyData.privateKey, 'hex');
+    }
+
+    static addressToECPublicKey(address) {
+        const pkB64 = ZxAIBC._removeAddressPrefix(address);
+
+        return ec.keyFromPublic(Buffer.from(urlSafeBase64ToBase64(pkB64), 'base64').toString('hex'), 'hex');
+    }
+
+    static compressPublicKeyObject(publicKey) {
+        const compressedPublicKeyB64 = Buffer.from(
+            ZxAIBC.publicKeyObjectToECKeyPair(publicKey).getPublic(true, 'hex'),
+            'hex',
+        ).toString('base64');
+
+        return base64ToUrlSafeBase64(compressedPublicKeyB64);
+    }
+
+    static addressFromPublicKey(publicKey) {
+        return ADDR_PREFIX + ZxAIBC.compressPublicKeyObject(publicKey);
+    }
+
+    static addressToPublicKeyUncompressed(address) {
+        return ZxAIBC.addressToECPublicKey(address).getPublic(false, 'hex');
+    }
+
+    static addressToPublicKeyObject(address) {
+        const uncompressedPublicKeyHex = this.addressToPublicKeyUncompressed(address);
+
+        // Manually create DER formatted public key
+        const publicKeyDerManual = '3056301006072a8648ce3d020106052b8104000a034200' + uncompressedPublicKeyHex;
+        return crypto.createPublicKey({
+            key: Buffer.from(publicKeyDerManual, 'hex'),
+            format: 'der',
+            type: 'spki',
+        });
+    }
+
+    static generateRandomWords(numWords = 24) {
+        const randomWords = [];
+
+        let i = 0;
+        while (i &lt; numWords) {
+            const randomIndex = Math.floor(Math.random() * words.length);
+            if (!randomWords.includes(words[randomIndex])) {
+                randomWords.push(words[randomIndex]);
+                i++;
+            }
+        }
+
+        return randomWords;
+    }
+
+    static generateIdentityFromSecretWords(words) {
+        const asString = words.join(';');
+        const hash = crypto.createHash('sha256').update(asString).digest('hex');
+        const hashInt = BigInt(`0x${hash}`);
+        const orderN = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+        const validSeed = hashInt % orderN;
+
+        return ec.keyFromPrivate(validSeed.toString(16));
+    }
+
+    static convertEllipticPrivateKeyToPKCS8DER(privateKeyHex) {
+        const privateKeyBuffer = Buffer.from(privateKeyHex, 'hex');
+
+        const ecPrivateKey = ECPrivateKey.encode({
+            version: 1,
+            privateKey: privateKeyBuffer,
+        }, 'der');
+
+        const privateKeyInfo = PKCS8.encode({
+            version: 0,
+            privateKeyAlgorithm: {
+                algorithm: [1, 2, 840, 10045, 2, 1],
+                parameters: [1, 3, 132, 0, 10]
+            },
+            privateKey: ecPrivateKey
+        }, 'der');
+
+        return privateKeyInfo;
+    }
+
+    static convertECKeyPairToPEM(keyPair) {
+        const privateKeyHex = keyPair.getPrivate('hex');
+        const publicKeyHex = keyPair.getPublic('hex').slice(2);
+        const pkcs8DER = ZxAIBC.convertEllipticPrivateKeyToPKCS8DER(privateKeyHex, publicKeyHex);
+
+        return `-----BEGIN PRIVATE KEY-----\n${pkcs8DER.toString('base64').match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----\n`;
+    }
+
+    static loadFromSecretWords(words) {
+        const identity = ZxAIBC.generateIdentityFromSecretWords(words);
+
+        return ZxAIBC.loadFromPem(ZxAIBC.convertECKeyPairToPEM(identity));
+    }
+
+    static loadFromPem(pem) {
+        try {
+            return crypto.createPrivateKey({
+                key: pem,
+                format: 'pem',
+                type: 'pkcs8'
+            });
+        } catch (error) {
+            console.error('Failed to load private key from PEM:', error);
+            throw new Error('Invalid PEM format or corrupted key data.');
+        }
+    }
+
+    loadIdentity(identityPrivateKey) {
+        const publicKey = crypto.createPublicKey(identityPrivateKey);
+        this.keyPair = {
+            privateKey: identityPrivateKey,
+            publicKey,
+        }
+
+        this.compressedPublicKey = ZxAIBC.compressPublicKeyObject(this.keyPair.publicKey);
+
+        return true;
+    }
+
+    /**
+     * Returns the public key as a string.
+     *
+     * @return {string} the public key in DER format
+     */
+    getPublicKeyDER() {
+        return this.keyPair.publicKey.toString();
+    }
+
+    /**
+     * Returns the NaeuralEdgeProtocol Network blockchain address.
+     *
+     * @return {string} the NaeuralEdgeProtocol Network Address
+     */
+    getAddress() {
+        return ADDR_PREFIX + this.compressedPublicKey;
+    }
+
+    exportAsPem() {
+        return this.keyPair.privateKey.export({ type: 'pkcs8', format: 'pem' });
+    }
+
+    /**
+     * Returns the signed input object with all the cryptographical metadata appended to it. The format can be either
+     * `json` or `object` and it allows the caller to select the format of the returned value.
+     *
+     * @param {object|string} input the input to be signed
+     * @param {string} format selector for the returned value
+     * @return {string|any} the signed input
+     */
+    sign(input, format = 'json') {
+        const { binHash, strHash } = this._getHash(input);
+        const signatureB64 = this._signHash(binHash);
+
+        return this._prepareMessage(input, signatureB64, format);
+    }
+
+    /**
+     * Verifies the message signature. If the message is incorrectly signed, will return false.
+     *
+     * @param {string} fullJSONMessage the message to verify
+     * @return {boolean} verification result
+     */
+    verify(fullJSONMessage) {
+        let hashResult = false;
+        let signatureResult = false;
+        let objReceived;
+
+        try {
+            objReceived = JSON.parse(fullJSONMessage);
+        } catch (e) {
+            return false;
+        }
+
+        const signatureB64 = objReceived[EE_SIGN];
+        const pkB64 = objReceived[EE_SENDER] ? ZxAIBC._removeAddressPrefix(objReceived[EE_SENDER]) : null;
+        const receivedHash = objReceived[EE_HASH];
+        const objData = Object.fromEntries(
+            Object.entries(objReceived).filter(([key]) => !NON_DATA_FIELDS.includes(key)),
+        );
+        const strData = stringify(objData);
+        const hash = crypto.createHash('sha256').update(strData).digest();
+        const hashHex = hash.toString('hex');
+
+        if (hashHex !== receivedHash) {
+            hashResult = false;
+            if (this.debugMode) {
+                console.log(
+                    'Hashes do not match or public key is missing:\n',
+                    '  Computed: ' + hashHex + '\n',
+                    '  Received: ' + receivedHash + '\n',
+                    '  Public key:' + pkB64 + '\n',
+                    '  Data: ' + JSON.stringify(objData) + '\n',
+                    '  Stringify: \'' + strData + '\'',
+                );
+            }
+        } else {
+            hashResult = true;
+        }
+
+        if (pkB64) {
+            const signatureBuffer = Buffer.from(urlSafeBase64ToBase64(signatureB64), 'base64');
+            const publicKeyObj = ZxAIBC.addressToPublicKeyObject(pkB64);
+
+
+            const ecKeyPair = ZxAIBC.publicKeyObjectToECKeyPair(publicKeyObj);
+            const rehash = Buffer.from(crypto.createHash('sha256').update(hash).digest('hex'), 'hex');
+            const ver = ecKeyPair.verify([...rehash], [...signatureBuffer]); // Elliptic Curve verify
+
+            // console.log('VER!!!!', ver);
+
+            signatureResult = crypto.verify(
+                null,
+                hash,
+                {
+                    key: publicKeyObj,
+                    padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+                },
+                signatureBuffer,
+            );
+
+            if (this.debugMode) {
+                console.log('Verify local hash: ' + signatureResult);
+                const bHash = Buffer.from(receivedHash, 'hex');
+                const signatureRecvResult = crypto.verify(
+                    null,
+                    bHash,
+                    {
+                        key: publicKeyObj,
+                        padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+                    },
+                    signatureBuffer,
+                );
+
+                if (signatureRecvResult) {
+                    console.log(
+                        'Signature is valid for received hash &amp; signature meaning that the public key is valid as well as the signature. Most likely someone or something modified the payload',
+                    );
+                } else {
+                    console.log('Verify ONLY on received hash &amp; signature FAILED: ' + signatureRecvResult);
+                }
+            }
+        }
+
+        return hashResult &amp;&amp; signatureResult;
+    }
+
+    encrypt(message, destinationAddress) {
+        const destinationPublicKey = ZxAIBC.addressToPublicKeyObject(destinationAddress);
+        const sharedKey = this._deriveSharedKey(destinationPublicKey);
+
+        const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv('aes-256-gcm', sharedKey, iv);
+        let encrypted = cipher.update(message, 'utf8');
+        encrypted = Buffer.concat([encrypted, cipher.final()]);
+
+        const encryptedData = Buffer.concat([iv, encrypted, cipher.getAuthTag()]);
+
+        return encryptedData.toString('base64');
+    }
+
+    decrypt(encryptedDataB64, sourceAddress) {
+        if (encryptedDataB64 === null) {
+            return null;
+        }
+
+        const sourcePublicKey = ZxAIBC.addressToPublicKeyObject(sourceAddress);
+        const encryptedData = Buffer.from(encryptedDataB64, 'base64');
+
+        // Extract nonce and ciphertext
+        const nonce = encryptedData.slice(0, 12);
+        const ciphertext = encryptedData.slice(12, encryptedData.length - 16);
+        const authTag = encryptedData.slice(encryptedData.length - 16);
+
+        // Derive shared key
+        const sharedKey = this._deriveSharedKey(sourcePublicKey);
+
+        // AES-GCM Decryption
+        const decipher = crypto.createDecipheriv('aes-256-gcm', sharedKey, nonce);
+        decipher.setAuthTag(authTag);
+        let decrypted = decipher.update(ciphertext);
+
+        try {
+            decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+            return decrypted.toString('utf8');
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Removes the prefix from the address.
+     *
+     * @param {string} address
+     * @return {string}
+     * @private
+     */
+    static _removeAddressPrefix(address) {
+        let pkB64 = address;
+        ALLOWED_PREFIXES.forEach((prefix) => {
+            pkB64 = pkB64.replace(prefix, '');
+        });
+
+        return pkB64;
+    }
+
+    /**
+     * @return {crypto.KeyObject}
+     * @private
+     */
+    _getPrivateKey() {
+        return this.keyPair.privateKey;
+    }
+
+    /**
+     * Returns the hash for a provided input. Inputs can be either a string or an object. Any other datatype will
+     * throw an error.
+     *
+     * @param input
+     * @return {{strHash: string, binHash: *}}
+     * @private
+     */
+    _getHash(input) {
+        let inputString;
+
+        if (typeof input === 'object') {
+            inputString = stringify(input);
+        } else if (typeof input === 'string') {
+            inputString = input;
+        } else {
+            throw new Error('Unsupported input type. Input must be a string or object.');
+        }
+
+        // Hash the input string
+        const strDigest = crypto.createHash('sha256').update(inputString).digest('hex');
+        const binDigest = Buffer.from(strDigest, 'hex');
+
+        return {
+            strHash: strDigest,
+            binHash: binDigest,
+        };
+    }
+
+    /**
+     * Generates the signature for the provided hash.
+     *
+     * @param {Buffer} binHash the hash to sign
+     * @return {string} the signature for the provided hash
+     * @private
+     */
+    _signHash(binHash) {
+        const signature = crypto.sign(null, binHash, this._getPrivateKey());
+        return base64ToUrlSafeBase64(signature.toString('base64'));
+    }
+
+    /**
+     * Generates and applies all the signatures and hashes to the input object. The format can be either
+     * `json` or `object` and it allows the caller to select the format of the returned value.
+     *
+     * @param input
+     * @param {string} signatureB64 the signature
+     * @param {string} format the format to return
+     * @return {object|string} the original object with signature properties appended
+     * @private
+     */
+    _prepareMessage(input, signatureB64, format) {
+        const message = Object.assign({}, input, {
+            [EE_SIGN]: signatureB64,
+            [EE_SENDER]: this.getAddress(),
+            [EE_HASH]: this._getHash(input).strHash,
+        });
+
+        if (format === 'json') {
+            return JSON.stringify(message);
+        } else if (format === 'object') {
+            return message;
+        } else {
+            throw new Error('Unsupported format. Format must be either "object" or "json".');
+        }
+    }
+
+    /**
+     *
+     * @param peerPublicKey
+     * @return {*}
+     * @private
+     */
+    _deriveSharedKey(peerPublicKey) {
+        const ecdh = crypto.createECDH('secp256k1');
+        const privateKeyHex = ZxAIBC.privateKeyObjectToECKeyPair(this.keyPair.privateKey).getPrivate().toString(16);
+        ecdh.setPrivateKey(Buffer.from(privateKeyHex, 'hex'));
+
+        const publicKeyHex = ZxAIBC.publicKeyObjectToECKeyPair(peerPublicKey).getPublic('hex');
+        const sharedSecret = ecdh.computeSecret(Buffer.from(publicKeyHex, 'hex'));
+
+        const key = hkdf(sharedSecret, 32, {
+            info: '0xai handshake data',
+            salt: Buffer.alloc(0),
+            hash: 'SHA-256',
+        });
+
+        return Buffer.from(key);
+    }
+}
+</code></pre></article></section></div></div></div><div class="search-container" id="PkfLWpAbet" style="display:none"><div class="wrapper" id="iCxFxjkHbP"><button class="icon-button search-close-button" id="VjLlGakifb" aria-label="close search"><svg><use xlink:href="#close-icon"></use></svg></button><div class="search-box-c"><svg><use xlink:href="#search-icon"></use></svg> <input type="text" id="vpcKVYIppa" class="search-input" placeholder="Search..." autofocus></div><div class="search-result-c" id="fWwVHRuDuN"><span class="search-result-c-text">Type anything to view search result</span></div></div></div><div class="mobile-menu-icon-container"><button class="icon-button" id="mobile-menu" data-isopen="false" aria-label="menu"><svg><use xlink:href="#menu-icon"></use></svg></button></div><div id="mobile-sidebar" class="mobile-sidebar-container"><div class="mobile-sidebar-wrapper"><a href="/" class="sidebar-title sidebar-title-anchor">Home</a><div class="mobile-nav-links"></div><div class="mobile-sidebar-items-c"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DataCaptureThread.html">DataCaptureThread</a></div><div class="sidebar-section-children"><a href="InternalStateManager.html">InternalStateManager</a></div><div class="sidebar-section-children"><a href="Logger.html">Logger</a></div><div class="sidebar-section-children"><a href="NetworkRequest.html">NetworkRequest</a></div><div class="sidebar-section-children"><a href="NetworkRequestsHandler.html">NetworkRequestsHandler</a></div><div class="sidebar-section-children"><a href="NodeManager.html">NodeManager</a></div><div class="sidebar-section-children"><a href="Pipeline.html">Pipeline</a></div><div class="sidebar-section-children"><a href="PluginInstance.html">PluginInstance</a></div><div class="sidebar-section-children"><a href="RedisStateManager.html">RedisStateManager</a></div><div class="sidebar-section-children"><a href="State.html">State</a></div><div class="sidebar-section-children"><a href="ZxAIBC.html">ZxAIBC</a></div><div class="sidebar-section-children"><a href="ZxAIClient.html">ZxAIClient</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#AlertedNodes">AlertedNodes</a></div><div class="sidebar-section-children"><a href="global.html#AllowedValues">AllowedValues</a></div><div class="sidebar-section-children"><a href="global.html#AvailableDCTResponse">AvailableDCTResponse</a></div><div class="sidebar-section-children"><a href="global.html#AvailableSchemaResponse">AvailableSchemaResponse</a></div><div class="sidebar-section-children"><a href="global.html#Field">Field</a></div><div class="sidebar-section-children"><a href="global.html#IntervalDefinition">IntervalDefinition</a></div><div class="sidebar-section-children"><a href="global.html#IsObject">IsObject</a></div><div class="sidebar-section-children"><a href="global.html#NodeStatus">NodeStatus</a></div><div class="sidebar-section-children"><a href="global.html#ObservedNodes">ObservedNodes</a></div><div class="sidebar-section-children"><a href="global.html#RedisConnectionOptions">RedisConnectionOptions</a></div><div class="sidebar-section-children"><a href="global.html#SchemaCollection">SchemaCollection</a></div><div class="sidebar-section-children"><a href="global.html#SchemaDefinition">SchemaDefinition</a></div><div class="sidebar-section-children"><a href="global.html#SchemasRepository">SchemasRepository</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIBlockchainOptions">ZxAIBlockchainOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientEvent">ZxAIClientEvent</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIClientOptions">ZxAIClientOptions</a></div><div class="sidebar-section-children"><a href="global.html#ZxAICommand">ZxAICommand</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIEventType">ZxAIEventType</a></div><div class="sidebar-section-children"><a href="global.html#ZxAIUpdateInstanceConfig">ZxAIUpdateInstanceConfig</a></div><div class="sidebar-section-children"><a href="global.html#applyDefaultsToObject">applyDefaultsToObject</a></div><div class="sidebar-section-children"><a href="global.html#archiveConfigRequestStrategy">archiveConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#base64ToUrlSafeBase64">base64ToUrlSafeBase64</a></div><div class="sidebar-section-children"><a href="global.html#camelToZxAIFormat">camelToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#checkMandatoryFields">checkMandatoryFields</a></div><div class="sidebar-section-children"><a href="global.html#checkType">checkType</a></div><div class="sidebar-section-children"><a href="global.html#computeDifferences">computeDifferences</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToCamelFormat">convertKeysToCamelFormat</a></div><div class="sidebar-section-children"><a href="global.html#convertKeysToZxAIFormat">convertKeysToZxAIFormat</a></div><div class="sidebar-section-children"><a href="global.html#dctSchemas">dctSchemas</a></div><div class="sidebar-section-children"><a href="global.html#decode">decode</a></div><div class="sidebar-section-children"><a href="global.html#defaultSchemas">defaultSchemas</a></div><div class="sidebar-section-children"><a href="global.html#encode">encode</a></div><div class="sidebar-section-children"><a href="global.html#generateId">generateId</a></div><div class="sidebar-section-children"><a href="global.html#getRedisConnection">getRedisConnection</a></div><div class="sidebar-section-children"><a href="global.html#hasFleetFilter">hasFleetFilter</a></div><div class="sidebar-section-children"><a href="global.html#identityFormatter">identityFormatter</a></div><div class="sidebar-section-children"><a href="global.html#pick">pick</a></div><div class="sidebar-section-children"><a href="global.html#pluginDefinition">pluginDefinition</a></div><div class="sidebar-section-children"><a href="global.html#pluginSchemas">pluginSchemas</a></div><div class="sidebar-section-children"><a href="global.html#rawIn">rawIn</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schema">schema</a></div><div class="sidebar-section-children"><a href="global.html#schemas">schemas</a></div><div class="sidebar-section-children"><a href="global.html#sleep">sleep</a></div><div class="sidebar-section-children"><a href="global.html#updateConfigRequestStrategy">updateConfigRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#updatePipelineInstanceRequestStrategy">updatePipelineInstanceRequestStrategy</a></div><div class="sidebar-section-children"><a href="global.html#urlSafeBase64ToBase64">urlSafeBase64ToBase64</a></div><div class="sidebar-section-children"><a href="global.html#validateAgainstSchema">validateAgainstSchema</a></div><div class="sidebar-section-children"><a href="global.html#zxAIFormatToCamel">zxAIFormatToCamel</a></div></div></div><div class="mobile-navbar-actions"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div></div></div><script type="text/javascript" src="scripts/core.min.js"></script><script src="scripts/search.min.js" defer="defer"></script><script src="scripts/third-party/fuse.js" defer="defer"></script><script type="text/javascript">var tocbotInstance=tocbot.init({tocSelector:"#eed4d2a0bfd64539bb9df78095dec881",contentSelector:".main-content",headingSelector:"h1, h2, h3",hasInnerContainers:!0,scrollContainer:".main-content",headingsOffset:130,onClick:bringLinkToView})</script></body></html>
