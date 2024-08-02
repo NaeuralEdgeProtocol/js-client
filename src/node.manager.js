@@ -1,4 +1,4 @@
-import { generateId } from './utils/helper.functions.js';
+import {encode, generateId} from './utils/helper.functions.js';
 import { Pipeline } from './models/pipeline.js';
 import {
     ADMIN_PIPELINE_NAME,
@@ -10,6 +10,8 @@ import {
     NODE_COMMAND_UPDATE_PIPELINE_INSTANCE, STICKY_COMMAND_ID_KEY,
 } from './constants.js';
 import { PluginInstance } from './models/plugin.instance.js';
+import {DCT_TYPE_VOID_STREAM} from './utils/dcts/index.js';
+import {CUSTOM_EXEC_01_SIGNATURE} from './utils/plugins/custom.exec.plugin.js';
 
 /**
  * @class NodeManager
@@ -163,6 +165,42 @@ export class NodeManager {
         }
 
         return changeSet;
+    }
+
+    /**
+     *
+     * @param code
+     * @param instanceName
+     * @param pipeline
+     * @return {Promise<NodeManager>}
+     */
+    async prepareCustomCode(code, instanceName, pipeline){
+        if (!code || code === '') {
+            throw new Error('Invalid custom code snippet.');
+        }
+
+        if (!instanceName || instanceName === '') {
+            throw new Error('Instance name is mandatory.');
+         }
+
+        if (!pipeline) {
+            this.logger.log(`No pipeline provided for custom code execution instance "${instanceName}". Creating a new pipeline called "${instanceName}-pip" of type ${DCT_TYPE_VOID_STREAM}`);
+            pipeline = await this.createPipeline({type: DCT_TYPE_VOID_STREAM, config: {}}, `${instanceName}-pip`);
+        }
+
+        let instance = (await this.getPluginInstances(pipeline)).filter((instance) => instance.signature === CUSTOM_EXEC_01_SIGNATURE && instance.id === instanceName)[0];
+        if (!instance) {
+            this.logger.warn(`Instance ${instanceName} not found on ${pipeline.id}, deploying a new one.`);
+            instance = this.createPluginInstance(
+                CUSTOM_EXEC_01_SIGNATURE,
+                { CODE: '' },
+                instanceName,
+            );
+
+            NodeManager.attachPluginInstanceToPipeline(pipeline, instance);
+        }
+
+        return this.updateInstance(instance, { CODE: await encode(code) });
     }
 
     /**
@@ -388,6 +426,12 @@ export class NodeManager {
         let pipeline = pipelineOrId;
         if (typeof pipelineOrId === 'string') {
             pipeline = await this.getPipeline(pipelineOrId);
+        }
+
+        if (!pipeline || !Object.hasOwn(pipeline, 'instances')) {
+            this.logger.warn('Pipeline does not have any instances or the pipeline is missing.');
+
+            return [];
         }
 
         return pipeline.instances;

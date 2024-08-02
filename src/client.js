@@ -286,6 +286,13 @@ export class ZxAIClient extends EventEmitter2 {
     alertedNodes = {};
 
     /**
+     * Dictionary of instance callbacks, indexed by NEN name and instance id.
+     *
+     * @type {*}
+     */
+    instanceCallbacks = {};
+
+    /**
      * The network client constructor.
      *
      * @constructor
@@ -432,6 +439,8 @@ export class ZxAIClient extends EventEmitter2 {
         switch (messageType) {
             case NETWORK_STICKY_PAYLOAD_RECEIVED:
                 return (message) => {
+                    this.maybeCallInstanceCallback(message);
+
                     client.emit(
                         message.context.instance.signature,
                         null, // no error
@@ -563,6 +572,8 @@ export class ZxAIClient extends EventEmitter2 {
                     // TODO: should emit EXCEPTIONS and ABNORMAL FUNCTIONING
                     break;
                 case MESSAGE_TYPE_PAYLOAD:
+                    this.maybeCallInstanceCallback(message);
+
                     client.emit(
                         message.context.instance.signature,
                         null, // no error
@@ -874,6 +885,37 @@ export class ZxAIClient extends EventEmitter2 {
     }
 
     /**
+     * Sets a custom callback for a specific instance.
+     *
+     * @param {string} node
+     * @param {PluginInstance|string} instance
+     * @param callback
+     * @return {ZxAIClient}
+     */
+    setInstanceCallback(node, instance, callback) {
+        if (!this.instanceCallbacks[node]) {
+            this.instanceCallbacks[node] = {};
+        }
+
+        let instanceName = null;
+        if (typeof instance === 'string') {
+            instanceName = instance;
+        } else if (typeof instance === 'object' && Object.hasOwn(instance, 'id')) {
+            instanceName = instance.id;
+        } else {
+            throw new Error('Invalid instance provided for attaching callback.');
+        }
+
+        if (!this.instanceCallbacks[node][instanceName]) {
+            this.instanceCallbacks[node][instanceName] = null;
+        }
+
+        this.instanceCallbacks[node][instanceName] = callback;
+
+        return this;
+    }
+
+    /**
      * Returns the client's observable universe: all the hosts that sent a heartbeat that are outside
      * this client's fleet.
      *
@@ -1052,5 +1094,22 @@ export class ZxAIClient extends EventEmitter2 {
         }
 
         return true;
+    }
+
+    maybeCallInstanceCallback(message) {
+        if (this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]] !== null &&
+            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]] !== undefined &&
+            message.context.metadata.EE_PAYLOAD_PATH[3] !== null &&
+            typeof message.context.metadata.EE_PAYLOAD_PATH[3] === 'string' &&
+            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] !== null &&
+            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] !== undefined &&
+            typeof this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] === 'function'
+        ) {
+            let err = null;
+            let context = message.context;
+            let data = message.data;
+
+            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]](err, context, data);
+        }
     }
 }

@@ -55,6 +55,7 @@ import {
     videoStreamDCTSchema,
     voidDCTSchema,
 } from './dcts/index.js';
+import {CUSTOM_EXEC_01_SIGNATURE, pluginDefinition as CustomExec } from './plugins/custom.exec.plugin.js';
 
 /** @type {SchemaCollection} */
 const dctSchemas = {
@@ -66,10 +67,15 @@ const dctSchemas = {
     [`${DCT_TYPE_ON_DEMAND_TEXT_INPUT}`]: onDemandTextInputSchema,
 };
 
+/** @type {SchemaCollection} */
+const pluginSchemas = {
+    [`${CUSTOM_EXEC_01_SIGNATURE}`]: CustomExec.schema,
+};
+
 /** @type {SchemasRepository} */
 const schemas = {
     dct: dctSchemas,
-    plugins: {},
+    plugins: pluginSchemas,
 };
 
 /**
