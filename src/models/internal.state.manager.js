@@ -66,16 +66,15 @@ export class InternalStateManager extends EventEmitter2 {
     /**
      * Broadcasts working fleet to all registered threads.
      *
-     * @param {Array<string>} fleet
      * @param {*} stateChange
      */
-    broadcastUpdateFleet(fleet, stateChange) {
-        this.logger.log(`Change for ${stateChange.node} to be ${stateChange.action > 0 ? 'added' : 'removed'} from the fleet has been posted to child threads.`);
+    broadcastUpdateFleet(stateChange) {
+        this.logger.log(`Change for ${stateChange.node} to be ${stateChange.action > 0 ? 'added to' : 'removed from'} the fleet has been posted to child threads.`);
 
         [...this.threads.heartbeats, ...this.threads.notifications, ...this.threads.payloads].forEach((thread) => {
             thread.postMessage({
                 command: THREAD_COMMAND_UPDATE_FLEET,
-                fleet,
+                ...stateChange,
             });
         });
     }

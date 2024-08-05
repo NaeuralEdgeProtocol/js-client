@@ -736,9 +736,8 @@ export class ZxAIClient extends EventEmitter2 {
     registerEdgeNode(node) {
         const fleet = this.state.getFleetNodes();
         if (!fleet.includes(node)) {
-            fleet.push(node);
-            this.bootOptions.fleet = [...fleet];
-            this.state.broadcastUpdateFleet(fleet, { node, action: 1, });
+            this.bootOptions.fleet = [...fleet, node];
+            this.state.broadcastUpdateFleet({ node, action: 1, });
 
             this.emit(ZxAI_ENGINE_REGISTERED, {
                 executionEngine: node, // deprecated
@@ -756,9 +755,8 @@ export class ZxAIClient extends EventEmitter2 {
     deregisterEdgeNode(node) {
         let fleet = this.state.getFleetNodes();
         if (fleet.includes(node)) {
-            fleet = fleet.filter(item => item !== node);
-            this.bootOptions.fleet = [...fleet];
-            this.state.broadcastUpdateFleet(fleet, { node, action: -1 });
+            this.bootOptions.fleet = fleet.filter(item => item !== node);
+            this.state.broadcastUpdateFleet({ node, action: -1 });
 
             this.emit(ZxAI_ENGINE_DEREGISTERED, {
                 executionEngine: node, // deprecated

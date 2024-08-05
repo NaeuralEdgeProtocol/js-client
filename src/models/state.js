@@ -195,13 +195,16 @@ export class State extends EventEmitter2 {
     /**
      * Update fleet and notify other interested parties (managed threads or other observing processes) about the update.
      *
-     * @param {Array<string>} fleet
      * @param {*} stateChange
      */
-    broadcastUpdateFleet(fleet, stateChange) {
-        this.fleet = fleet;
+    broadcastUpdateFleet(stateChange) {
+        if (stateChange.action > 0 && !this.fleet.includes(stateChange.node)) {
+            this.fleet.push(stateChange.node);
+        } else if (stateChange.action < 0 && this.fleet.includes(stateChange.node)) {
+            this.fleet = this.fleet.filter(item => item !== stateChange.node);
+        }
 
-        this.manager.broadcastUpdateFleet(fleet, stateChange);
+        this.manager.broadcastUpdateFleet(stateChange);
     }
 
     /**

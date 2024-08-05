@@ -492,23 +492,23 @@ export class Thread extends EventEmitter2 {
         this.logger.debug(`Received command "${command}"`);
 
         switch (command) {
-        case THREAD_COMMAND_UPDATE_FLEET:
-            this._updateFleet(message);
-            break;
-        case THREAD_COMMAND_UPDATE_STATE:
-            this._updateState(message);
-            break;
-        case THREAD_COMMAND_WATCH_FOR_SESSION_ID:
-            this._watchForSessionId(message);
-            break;
-        case THREAD_COMMAND_IGNORE_SESSION_ID:
-            this._ignoreSessionId(message);
-            break;
-        case THREAD_COMMAND_WATCH_FOR_STICKY_SESSION_ID:
-            this._watchForStickySessionId(message);
-            break;
-        case THREAD_COMMAND_MEMORY_USAGE:
-            this._reportMemoryUsage();
+            case THREAD_COMMAND_UPDATE_FLEET:
+                this._updateFleet(message);
+                break;
+            case THREAD_COMMAND_UPDATE_STATE:
+                this._updateState(message);
+                break;
+            case THREAD_COMMAND_WATCH_FOR_SESSION_ID:
+                this._watchForSessionId(message);
+                break;
+            case THREAD_COMMAND_IGNORE_SESSION_ID:
+                this._ignoreSessionId(message);
+                break;
+            case THREAD_COMMAND_WATCH_FOR_STICKY_SESSION_ID:
+                this._watchForStickySessionId(message);
+                break;
+            case THREAD_COMMAND_MEMORY_USAGE:
+                this._reportMemoryUsage();
         }
     }
 
@@ -540,8 +540,14 @@ export class Thread extends EventEmitter2 {
         this.state[data.node] = data.state;
     }
 
-    _updateFleet(data) {
-        this.startupOptions.fleet = data.fleet;
+    _updateFleet(eventData) {
+        this.logger.log(`Change for ${eventData.node} to be ${eventData.action > 0 ? 'added to' : 'removed from'} the fleet has been received.`);
+
+        if (eventData.action > 0 && !this.startupOptions.fleet.includes(eventData.node)) {
+            this.startupOptions.fleet.push(eventData.node);
+        } else if (eventData.action < 0 && this.startupOptions.fleet.includes(eventData.node)) {
+            this.startupOptions.fleet = this.startupOptions.fleet.filter(item => item !== eventData.node);
+        }
     }
 
     _watchForSessionId(data) {

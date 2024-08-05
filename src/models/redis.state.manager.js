@@ -121,11 +121,10 @@ export class RedisStateManager extends EventEmitter2 {
     /**
      * Broadcasts working fleet to all subscribed threads.
      *
-     * @param {Array<string>} fleet
      * @param {*} stateChange
      */
-    broadcastUpdateFleet(fleet, stateChange) {
-        this.logger.log(`Change for ${stateChange.node} to be ${stateChange.action > 0 ? 'added' : 'removed'} from the fleet has been posted to child threads.`);
+    broadcastUpdateFleet(stateChange) {
+        this.logger.log(`Change for ${stateChange.node} to be ${stateChange.action > 0 ? 'added to' : 'removed from'} the fleet has been posted to child threads.`);
 
         this.publishChannel.publish(
             FLEET_UPDATES_INBOX,
@@ -136,7 +135,7 @@ export class RedisStateManager extends EventEmitter2 {
             this.pubSubChannel,
             JSON.stringify({
                 command: THREAD_COMMAND_UPDATE_FLEET,
-                fleet,
+                ...stateChange,
             }),
         );
     }
