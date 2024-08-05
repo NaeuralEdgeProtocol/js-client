@@ -151,3 +151,6 @@ export const logLevels = {
 };
 
 export const levelNames = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
+
+export const FLEET_UPDATES_INBOX = 'fleet-updates';
+export const FLEET_UPDATE_EVENT = 'fleet-update-event';

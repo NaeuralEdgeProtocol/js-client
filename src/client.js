@@ -734,9 +734,12 @@ export class ZxAIClient extends EventEmitter2 {
      * @return {void}
      */
     registerEdgeNode(node) {
-        if (!this.bootOptions.fleet.includes(node)) {
-            this.bootOptions.fleet.push(node);
-            this.state.broadcastUpdateFleet(this.bootOptions.fleet);
+        const fleet = this.state.getFleetNodes();
+        if (!fleet.includes(node)) {
+            fleet.push(node);
+            this.bootOptions.fleet = [...fleet];
+            this.state.broadcastUpdateFleet(fleet, { node, action: 1, });
+
             this.emit(ZxAI_ENGINE_REGISTERED, {
                 executionEngine: node, // deprecated
                 node: node,
@@ -751,9 +754,11 @@ export class ZxAIClient extends EventEmitter2 {
      * @return {void}
      */
     deregisterEdgeNode(node) {
-        if (this.bootOptions.fleet.includes(node)) {
-            this.bootOptions.fleet.splice(this.bootOptions.fleet.indexOf(node), 1);
-            this.state.broadcastUpdateFleet(this.bootOptions.fleet);
+        let fleet = this.state.getFleetNodes();
+        if (fleet.includes(node)) {
+            fleet = fleet.filter(item => item !== node);
+            this.bootOptions.fleet = [...fleet];
+            this.state.broadcastUpdateFleet(fleet, { node, action: -1 });
 
             this.emit(ZxAI_ENGINE_DEREGISTERED, {
                 executionEngine: node, // deprecated
@@ -1074,7 +1079,8 @@ export class ZxAIClient extends EventEmitter2 {
             filtered = false;
         }
 
-        if (filtered && !this.bootOptions.fleet.includes(node)) {
+        const fleet = this.state.getFleetNodes();
+        if (filtered && !fleet.includes(node)) {
             this.logger.error(`[Main Thread] Node ${node} is not registered in the working fleet.`);
 
             return false;

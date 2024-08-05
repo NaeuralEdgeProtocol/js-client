@@ -1,4 +1,5 @@
 import {
+    FLEET_UPDATE_EVENT,
     INTERNAL_STATE_MANAGER,
     NETWORK_REQUEST_RESPONSE_NOTIFICATION,
     NETWORK_STICKY_PAYLOAD_RECEIVED,
@@ -82,6 +83,10 @@ export class State extends EventEmitter2 {
         this.manager.on(NETWORK_STICKY_PAYLOAD_RECEIVED, (message) => {
             self.emit(NETWORK_STICKY_PAYLOAD_RECEIVED, message);
         });
+
+        this.manager.on(FLEET_UPDATE_EVENT, (message) => {
+            self.onRemoteFleetUpdateReceived(message);
+        });
     }
 
     /**
@@ -108,6 +113,14 @@ export class State extends EventEmitter2 {
                 self.manager.broadcastIgnoreRequestId(request.getId(), request.listWatches());
                 self.networkRequestsHandler.destroy(message.context.metadata.EE_PAYLOAD_PATH);
             }
+        }
+    }
+
+    onRemoteFleetUpdateReceived(eventData) {
+        if (eventData.action > 0 && !this.fleet.includes(eventData.node)) {
+            this.fleet.push(eventData.node);
+        } else if (eventData.action < 0 && this.fleet.includes(eventData.node)) {
+            this.fleet = this.fleet.filter(item => item !== eventData.node);
         }
     }
 
@@ -183,11 +196,12 @@ export class State extends EventEmitter2 {
      * Update fleet and notify other interested parties (managed threads or other observing processes) about the update.
      *
      * @param {Array<string>} fleet
+     * @param {*} stateChange
      */
-    broadcastUpdateFleet(fleet) {
+    broadcastUpdateFleet(fleet, stateChange) {
         this.fleet = fleet;
 
-        this.manager.broadcastUpdateFleet(fleet);
+        this.manager.broadcastUpdateFleet(fleet, stateChange);
     }
 
     /**
@@ -200,6 +214,10 @@ export class State extends EventEmitter2 {
         if (this.type === REDIS_STATE_MANAGER) {
             this.manager.broadcastPayloadStickySession(stickySessionId);
         }
+    }
+
+    getFleetNodes() {
+        return this.fleet;
     }
 
     /**

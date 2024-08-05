@@ -10,6 +10,8 @@ import {
     THREAD_COMMAND_WATCH_FOR_STICKY_SESSION_ID,
     MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
     NETWORK_STICKY_PAYLOAD_RECEIVED,
+    FLEET_UPDATES_INBOX,
+    FLEET_UPDATE_EVENT,
 } from '../constants.js';
 import { generateId, sleep } from '../utils/helper.functions.js';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
@@ -94,6 +96,14 @@ export class RedisStateManager extends EventEmitter2 {
             }
         });
 
+        this.subscriptionChannel.subscribe(FLEET_UPDATES_INBOX, (err) => {
+            if (err) {
+                this.logger.error(`[Redis State Manager] Error while subscribing to fleet updates inbox (id: ${FLEET_UPDATES_INBOX}}).`);
+            } else {
+                this.logger.log(`[Redis State Manager] Inbox subscription ok (id: ${FLEET_UPDATES_INBOX}}).`);
+            }
+        });
+
         this.subscriptionChannel.on('message', (channel, strMessage) => {
             if (channel === inboxId) {
                 const message = JSON.parse(strMessage);
@@ -102,6 +112,8 @@ export class RedisStateManager extends EventEmitter2 {
                 } else {
                     this.emit(NETWORK_STICKY_PAYLOAD_RECEIVED, message);
                 }
+            } else if (channel === FLEET_UPDATES_INBOX) {
+                this.emit(FLEET_UPDATE_EVENT, JSON.parse(strMessage));
             }
         });
     }
@@ -110,8 +122,16 @@ export class RedisStateManager extends EventEmitter2 {
      * Broadcasts working fleet to all subscribed threads.
      *
      * @param {Array<string>} fleet
+     * @param {*} stateChange
      */
-    broadcastUpdateFleet(fleet) {
+    broadcastUpdateFleet(fleet, stateChange) {
+        this.logger.log(`Change for ${stateChange.node} to be ${stateChange.action > 0 ? 'added' : 'removed'} from the fleet has been posted to child threads.`);
+
+        this.publishChannel.publish(
+            FLEET_UPDATES_INBOX,
+            JSON.stringify(stateChange),
+        );
+
         this.publishChannel.publish(
             this.pubSubChannel,
             JSON.stringify({
