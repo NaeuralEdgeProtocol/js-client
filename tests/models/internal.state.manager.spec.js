@@ -8,18 +8,22 @@ describe('InternalStateManager', () => {
 
     beforeEach(() => {
         manager = new InternalStateManager();
+        manager.logger = {
+            log: () => {},
+        };
+
         mockPostMessage = jest.fn();
         manager.registerThread('heartbeats', { postMessage: mockPostMessage });
         manager.registerThread('notifications', { postMessage: mockPostMessage });
     });
 
     test('broadcastUpdateFleet() sends correct message to all threads', () => {
-        const fleet = ['node1', 'node2'];
-        manager.broadcastUpdateFleet(fleet);
+        const fleetChange = { node: 'node1', action: 1 };
+        manager.broadcastUpdateFleet(fleetChange);
         expect(mockPostMessage).toHaveBeenCalledTimes(2);
         expect(mockPostMessage).toHaveBeenCalledWith({
             command: 'THREAD_COMMAND_UPDATE_FLEET',
-            fleet,
+            ...fleetChange,
         });
     });
 

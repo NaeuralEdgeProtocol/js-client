@@ -19,6 +19,7 @@ const mockedRedisConnection = {
 };
 
 const mockedLogger = {
+    log: jest.fn(),
     error: jest.fn(),
     info: jest.fn(),
     debug: jest.fn(),
@@ -54,14 +55,14 @@ describe('RedisStateManager Tests', () => {
     });
 
     test('broadcastUpdateFleet() should publish fleet update correctly', async () => {
-        const fleet = ['node1', 'node2'];
-        await redisStateManager.broadcastUpdateFleet(fleet);
+        const fleetChange = { node: 'node1', action: 1 };
+        await redisStateManager.broadcastUpdateFleet(fleetChange);
 
         expect(mockedRedisConnection.publish).toHaveBeenCalledWith(
             pubSubChannel,
             JSON.stringify({
                 command: THREAD_COMMAND_UPDATE_FLEET,
-                fleet,
+                ...fleetChange,
             }),
         );
     });

@@ -47,7 +47,7 @@
   "dependencies": {
     "asn1.js": "^5.4.1",
     "dotenv": "^16.3.1",
-    "elliptic": "^6.5.4",
+    "elliptic": "^6.5.6",
     "eventemitter2": "^6.4.9",
     "futoin-hkdf": "^1.5.3",
     "ioredis": "^5.3.2",

@@ -184,8 +184,6 @@ dlX1mKIzZ+Rt94ydCRaVjw==
 
             const address = ZxAIBC.addressFromPublicKey(publicKey);
 
-            console.log(address);
-
             expect(true).toEqual(true);
 
         });

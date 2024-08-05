@@ -223,13 +223,13 @@ describe('State class tests', () => {
     });
 
     test('broadcastUpdateFleet() updates fleet and broadcasts the update using the state manager', () => {
-        const newFleet = ['node3', 'node4'];
+        const fleetChange = { node: 'node3', action: 1 };
         mockManager.broadcastUpdateFleet.mockImplementation(() => {});
 
-        state.broadcastUpdateFleet(newFleet);
+        state.broadcastUpdateFleet(fleetChange);
 
-        expect(state.fleet).toEqual(newFleet);
-        expect(mockManager.broadcastUpdateFleet).toHaveBeenCalledWith(newFleet);
+        expect(state.fleet).toEqual([ 'node1', 'node2', 'node3' ]);
+        expect(mockManager.broadcastUpdateFleet).toHaveBeenCalledWith(fleetChange);
     });
 
     describe('getFleet() Tests', () => {
