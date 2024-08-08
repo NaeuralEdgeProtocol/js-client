@@ -455,8 +455,14 @@ export class Thread extends EventEmitter2 {
                 }
 
                 if (this.threadType === THREAD_TYPE_PAYLOADS) {
-                    if (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) {
-                        const stickyId = data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY];
+                  if (
+                    (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) ||
+                    (Object.hasOwn(data, 'ON_COMMAND_REQUEST') && !!data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY])
+                  ) {
+                        const stickyId = data.COMMAND_PARAMS !== undefined ?
+                          data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY] :
+                          data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY];
+
                         const receiver = this.stickySessions[stickyId];
 
                             if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
