@@ -28,14 +28,14 @@ import {
     THREAD_TYPE_PAYLOADS,
     THREAD_TYPE_UNKNOWN,
     logLevels,
-    MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH,
     THREAD_COMMAND_MEMORY_USAGE,
     MESSAGE_TYPE_THREAD_MEMORY_USAGE,
     MESSAGE_TYPE_NETWORK_NODE_DOWN,
     MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
+    MESSAGE_TYPE_THREAD_LOG, ADDRESSES_UPDATES_INBOX, MESSAGE_TYPE_REFRESH_ADDRESSES,
 } from '../constants.js';
 import { ZxAIBC } from '../utils/blockchain.js';
-import { hasFleetFilter } from '../utils/helper.functions.js';
+import {hasFleetFilter, isAddress} from '../utils/helper.functions.js';
 import EventEmitter2 from 'eventemitter2';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
 
@@ -61,7 +61,7 @@ class ThreadLogger {
     log(message, context) {
         this.mainThread.postMessage({
             threadId: this.threadId,
-            type: 'LOGGER',
+            type: MESSAGE_TYPE_THREAD_LOG,
             level: logLevels.info,
             message,
             context,
@@ -71,7 +71,7 @@ class ThreadLogger {
     error(message, context) {
         this.mainThread.postMessage({
             threadId: this.threadId,
-            type: 'LOGGER',
+            type: MESSAGE_TYPE_THREAD_LOG,
             level: logLevels.error,
             message,
             context,
@@ -81,7 +81,7 @@ class ThreadLogger {
     warn(message, context) {
         this.mainThread.postMessage({
             threadId: this.threadId,
-            type: 'LOGGER',
+            type: MESSAGE_TYPE_THREAD_LOG,
             level: logLevels.warn,
             message,
             context,
@@ -91,7 +91,7 @@ class ThreadLogger {
     debug(message, context) {
         this.mainThread.postMessage({
             threadId: this.threadId,
-            type: 'LOGGER',
+            type: MESSAGE_TYPE_THREAD_LOG,
             level: logLevels.debug,
             message,
             context,
@@ -101,7 +101,7 @@ class ThreadLogger {
     verbose(message, context) {
         this.mainThread.postMessage({
             threadId: this.threadId,
-            type: 'LOGGER',
+            type: MESSAGE_TYPE_THREAD_LOG,
             level: logLevels.verbose,
             message,
             context,
@@ -213,6 +213,10 @@ export class Thread extends EventEmitter2 {
     };
 
     state = {};
+
+    addressToNodeName = {};
+
+    nodeNameToAddress = {};
 
     cache = null;
 
@@ -353,6 +357,12 @@ export class Thread extends EventEmitter2 {
                 }
             });
 
+            this.subscriptionChannel.subscribe(ADDRESSES_UPDATES_INBOX, (err) => {
+                if (err) {
+                    this.logger.debug(`Topic: ${ADDRESSES_UPDATES_INBOX} Redis PubSub Stacktrace:`, err);
+                }
+            });
+
             this.subscriptionChannel.on('message', (channel, message) => {
                 const parsed = JSON.parse(message);
                 this.do(parsed.command, parsed);
@@ -378,7 +388,7 @@ export class Thread extends EventEmitter2 {
                 concatMap((message) => this._decodeToInternalFormat(message)),
             )
             .subscribe((message) => {
-                const context = this._makeContext(message.EE_PAYLOAD_PATH);
+                const context = this._makeContext(message.EE_PAYLOAD_PATH, message.EE_SENDER);
                 let data = message;
 
                 // route heartbeats as they come
@@ -409,7 +419,9 @@ export class Thread extends EventEmitter2 {
                 }
 
                 const sessionId = context.metadata.SESSION_ID;
-                const path = context.metadata.EE_PAYLOAD_PATH.join(':');
+                let path = [...context.metadata.EE_PAYLOAD_PATH];
+                path[0] = this._getAddress(path[0]);
+                path = path.join(':');
 
                 // for notifications, route responses to expecting inboxes for transaction handling
                 // then bubble the notification for the consumer
@@ -455,28 +467,28 @@ export class Thread extends EventEmitter2 {
                 }
 
                 if (this.threadType === THREAD_TYPE_PAYLOADS) {
-                  if (
-                    (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) ||
-                    (Object.hasOwn(data, 'ON_COMMAND_REQUEST') && !!data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY])
-                  ) {
+                    if (
+                      (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) ||
+                      (Object.hasOwn(data, 'ON_COMMAND_REQUEST') && !!data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY])
+                    ) {
                         const stickyId = data.COMMAND_PARAMS !== undefined ?
                           data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY] :
                           data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY];
 
                         const receiver = this.stickySessions[stickyId];
 
-                            if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
-                                this.publishChannel.publish(
-                                    receiver,
-                                    JSON.stringify({
-                                        threadId: this.threadId,
-                                        type: message.EE_EVENT_TYPE,
-                                        success: true,
-                                        error: null,
-                                        data: data,
-                                        context,
-                                    }),
-                                );
+                        if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
+                            this.publishChannel.publish(
+                                receiver,
+                                JSON.stringify({
+                                    threadId: this.threadId,
+                                    type: message.EE_EVENT_TYPE,
+                                    success: true,
+                                    error: null,
+                                    data: data,
+                                    context,
+                                }),
+                            );
 
                             return;
                         }
@@ -515,12 +527,28 @@ export class Thread extends EventEmitter2 {
                 break;
             case THREAD_COMMAND_MEMORY_USAGE:
                 this._reportMemoryUsage();
+                break;
+            case MESSAGE_TYPE_REFRESH_ADDRESSES:
+                this._refreshAddresses(message);
+                break;
         }
     }
 
     /*************************************
      * Internal thread operations
      *************************************/
+
+    _refreshAddresses(message) {
+        this.logger.debug('Refreshed addresses in consumer thread.');
+
+        if (message.nodes !== undefined && message.nodes !== null) {
+            this.nodeNameToAddress = message.nodes;
+        }
+
+        if (message.addresses !== undefined && message.addresses !== null) {
+            this.addressToNodeName = message.addresses;
+        }
+    }
 
     _reportMemoryUsage() {
         this.mainThread.postMessage({
@@ -539,11 +567,11 @@ export class Thread extends EventEmitter2 {
             return;
         }
 
-        if (!this.state[data.node]) {
-            this.state[data.node] = {};
+        if (!this.state[data.address]) {
+            this.state[data.address] = {};
         }
 
-        this.state[data.node] = data.state;
+        this.state[data.address] = data.state;
     }
 
     _updateFleet(eventData) {
@@ -611,8 +639,10 @@ export class Thread extends EventEmitter2 {
         this.stickySessions[data.stickyId] = data.handler;
     }
 
-    _makeContext(path) {
+    _makeContext(path, address) {
         const context = {
+            address: address,
+            node: this._getNodeForAddress(address),
             pipeline: null,
             instance: null,
             metadata: null,
@@ -620,7 +650,7 @@ export class Thread extends EventEmitter2 {
 
         if (path[1] !== null) {
             // needs pipeline context
-            const pipeline = this.state[path[0]] && this.state[path[0]][path[1]] ? this.state[path[0]][path[1]] : null;
+            const pipeline = this.state[address] && this.state[address][path[1]] ? this.state[address][path[1]] : null;
             if (pipeline) {
                 context.pipeline = {
                     name: path[1],
@@ -639,10 +669,10 @@ export class Thread extends EventEmitter2 {
             const signature = path[2];
             const instanceId = path[3];
             const instance =
-                !!this.state[path[0]] &&
-                !!this.state[path[0]][path[1]]?.plugins[signature] &&
-                !!this.state[path[0]][path[1]]?.plugins[signature][instanceId]
-                    ? this.state[path[0]][path[1]].plugins[signature][instanceId]
+                !!this.state[address] &&
+                !!this.state[address][path[1]]?.plugins[signature] &&
+                !!this.state[address][path[1]]?.plugins[signature][instanceId]
+                    ? this.state[address][path[1]].plugins[signature][instanceId]
                     : null;
 
             let config = {};
@@ -733,33 +763,48 @@ export class Thread extends EventEmitter2 {
             if (this._messageHasKnownFormat(duplicate)) {
                 this._decodeToInternalFormat(duplicate).then((decoded) => {
                     if (decoded.EE_PAYLOAD_PATH[2]?.toLowerCase() === 'net_mon_01') {
-
+                        const addressToNode = {};
+                        const nodeToAddress = {};
                         if (decoded.DATA?.CURRENT_NETWORK !== undefined) {
                             this.mainThread.postMessage({
                                 threadId: this.threadId,
                                 type: MESSAGE_TYPE_SUPERVISOR_STATUS,
                                 success: true,
                                 error: null,
-                                data: decoded.DATA,
+                                data: {...decoded.DATA, EE_SENDER: decoded.EE_SENDER },
                             });
 
-                            const addresses = {};
                             Object.keys(decoded.DATA.CURRENT_NETWORK ?? {}).forEach((nodeName) => {
-                                addresses[nodeName] = decoded.DATA.CURRENT_NETWORK[nodeName].address;
+                                nodeToAddress[nodeName] = decoded.DATA.CURRENT_NETWORK[nodeName].address;
+                                addressToNode[decoded.DATA.CURRENT_NETWORK[nodeName].address] = nodeName;
                             });
 
-                            this.mainThread.postMessage({
-                                threadId: this.threadId,
-                                type: MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH,
-                                success: true,
-                                error: null,
-                                data: addresses,
-                            });
+                            if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
+                                this.publishChannel.publish(
+                                    ADDRESSES_UPDATES_INBOX,
+                                    JSON.stringify({
+                                        command: MESSAGE_TYPE_REFRESH_ADDRESSES,
+                                        nodes: nodeToAddress,
+                                        addresses: addressToNode,
+                                    }),
+                                );
+                            } else {
+                                this.mainThread.postMessage({
+                                    threadId: this.threadId,
+                                    type: MESSAGE_TYPE_REFRESH_ADDRESSES,
+                                    success: true,
+                                    error: null,
+                                    nodes: nodeToAddress,
+                                    addresses: addressToNode,
+                                });
+                            }
                         }
 
-                        if (decoded.DATA.IS_ALERT === true && !!decoded.DATA?.CURRENT_ALERTED) {
+                        if (decoded.DATA?.IS_ALERT === true && !!decoded.DATA?.CURRENT_ALERTED) {
+                            // TODO: this should be indexed by node addresses as well
                             const alerted = Object.keys(decoded.DATA.CURRENT_ALERTED).map((nodeName) => ({
                                 node: nodeName,
+                                address: nodeToAddress[nodeName] ?? null,
                                 lastSeen: decoded.DATA.CURRENT_ALERTED[nodeName]['last_seen_sec'],
                             }));
 
@@ -774,6 +819,8 @@ export class Thread extends EventEmitter2 {
                     }
 
                     const context = {
+                        address: decoded.EE_SENDER,
+                        name: this._getNodeForAddress(decoded.EE_SENDER),
                         metadata: {},
                         pipeline: {},
                         instance: {},
@@ -803,8 +850,6 @@ export class Thread extends EventEmitter2 {
     }
 
     _messageFromControlledFleet(message) {
-        const node = message.EE_PAYLOAD_PATH[0];
-
         if (this.threadType === THREAD_TYPE_HEARTBEATS) {
             this.mainThread.postMessage({
                 threadId: this.threadId,
@@ -812,13 +857,14 @@ export class Thread extends EventEmitter2 {
                 success: true,
                 error: null,
                 data: {
-                    node: node,
+                    node: this._getNodeForAddress(message.EE_SENDER),
+                    address: message.EE_SENDER,
                     timestamp: new Date().getTime(),
                 },
             });
         }
 
-        return !hasFleetFilter(this.startupOptions.fleet) || this.startupOptions.fleet.includes(node);
+        return !hasFleetFilter(this.startupOptions.fleet) || this.startupOptions.fleet.includes(message.EE_SENDER);
     }
 
     _messageHasKnownFormat(message) {
@@ -851,6 +897,44 @@ export class Thread extends EventEmitter2 {
         }
 
         return internalMessage;
+    }
+
+    /**
+     * Returns the address for a given value if the value is a node name, returns the value if the value is already
+     * and address.
+     *
+     * @param {string} value
+     * @return {string|null}
+     * @private
+     */
+    _getAddress(value) {
+        if (isAddress(value)) {
+            return value;
+        }
+
+        return this._getAddressForNode(value);
+    }
+
+    /**
+     * Returns the node name for a given address. Returns null if address has not been observed.
+     *
+     * @param {string} address
+     * @return {string|null}
+     * @private
+     */
+    _getNodeForAddress(address) {
+        return this.addressToNodeName[address] ?? null;
+    }
+
+    /**
+     * Returns the address for a given node name. Returns null if node has not been observed.
+     *
+     * @param {string} node
+     * @return {string|null}
+     * @private
+     */
+    _getAddressForNode(node) {
+        return this.nodeNameToAddress[node] ?? null;
     }
 }
 

@@ -383,3 +383,13 @@ export const computeDifferences = (original, modified) => {
 
     return Object.keys(differences).length > 0 ? differences : null;
 };
+
+/**
+ * Check if value is an address or a node name.
+ *
+ * @param {string} value
+ * @private
+ */
+export const isAddress = (value) => {
+    return value.substring(0, 5) === '0xai_';
+};

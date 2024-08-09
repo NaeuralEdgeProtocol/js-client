@@ -352,8 +352,6 @@ export class ZxAIBC {
             const rehash = Buffer.from(crypto.createHash('sha256').update(hash).digest('hex'), 'hex');
             const ver = ecKeyPair.verify([...rehash], [...signatureBuffer]); // Elliptic Curve verify
 
-            // console.log('VER!!!!', ver);
-
             signatureResult = crypto.verify(
                 null,
                 hash,

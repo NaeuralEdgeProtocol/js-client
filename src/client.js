@@ -61,7 +61,6 @@ import {
     ALL_EDGE_NODES,
     INTERNAL_STATE_MANAGER,
     MESSAGE_TYPE_HEARTBEAT,
-    MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH,
     MESSAGE_TYPE_NETWORK_NODE_DOWN,
     MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
     MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
@@ -82,6 +81,9 @@ import {
     THREAD_COMMAND_MEMORY_USAGE,
     THREAD_COMMAND_START,
     ZxAI_SUPERVISOR_PAYLOAD,
+    ZxAI_RECEIVED_HEARTBEAT_FROM_ADDRESS,
+    MESSAGE_TYPE_THREAD_LOG,
+    MESSAGE_TYPE_REFRESH_ADDRESSES,
 } from './constants.js';
 import { ZxAIBC } from './utils/blockchain.js';
 import { State } from './models/state.js';
@@ -92,6 +94,7 @@ import { InternalStateManager } from './models/internal.state.manager.js';
 import { RedisStateManager } from './models/redis.state.manager.js';
 import { Logger } from './app.logger.js';
 import { NodeManager } from './node.manager.js';
+import {hasFleetFilter} from './utils/helper.functions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -322,6 +325,9 @@ export class ZxAIClient extends EventEmitter2 {
             this.logger = logger;
         }
 
+        options.initialFleet = [...options.fleet];
+        options.fleet = [];
+
         this.schemas = defaultSchemas();
         this.bootOptions = Object.assign(this.bootOptions, options);
         this.bootOptions.redis.pubSubChannel = `updates-${this.bootOptions.initiator}`;
@@ -331,13 +337,13 @@ export class ZxAIClient extends EventEmitter2 {
         }
 
         if (!this.bootOptions.stateManager || this.bootOptions.stateManager === INTERNAL_STATE_MANAGER) {
-            this.state = new State(INTERNAL_STATE_MANAGER, new InternalStateManager(), {
-                fleet: this.bootOptions.fleet,
-            });
+            this.state = new State(INTERNAL_STATE_MANAGER, new InternalStateManager(this.logger), {
+                fleet: hasFleetFilter(options.initialFleet) ? [] : [ ALL_EDGE_NODES ],
+            }, this.logger);
         } else if (this.bootOptions.stateManager === REDIS_STATE_MANAGER) {
             this.state = new State(REDIS_STATE_MANAGER, new RedisStateManager(this.bootOptions.redis, this.logger), {
-                fleet: this.bootOptions.fleet,
-            });
+                fleet: hasFleetFilter(options.initialFleet) ? [] : [ ALL_EDGE_NODES ],
+            }, this.logger);
         } else {
             throw Error('Incorrect state setup.');
         }
@@ -415,6 +421,12 @@ export class ZxAIClient extends EventEmitter2 {
         });
 
         if (this.checkBootComplete()) {
+            if (hasFleetFilter(this.bootOptions.initialFleet)) {
+                this.bootOptions.initialFleet.forEach((nodeNameOrAddress) => {
+                    this.registerEdgeNode(nodeNameOrAddress);
+                });
+            }
+
             this.emit(ZxAI_CLIENT_BOOTED, {
                 event: ZxAI_CLIENT_BOOTED,
                 status: true,
@@ -439,7 +451,7 @@ export class ZxAIClient extends EventEmitter2 {
         switch (messageType) {
             case NETWORK_STICKY_PAYLOAD_RECEIVED:
                 return (message) => {
-                    this.maybeCallInstanceCallback(message);
+                    this._maybeCallInstanceCallback(message);
 
                     client.emit(
                         message.context.instance.signature,
@@ -467,7 +479,7 @@ export class ZxAIClient extends EventEmitter2 {
 
         return (message) => {
             switch (message.type) {
-                case 'LOGGER':
+                case MESSAGE_TYPE_THREAD_LOG:
                     // eslint-disable-next-line no-case-declarations
                     let prefix = '';
                     if (message.threadId !== null) {
@@ -509,11 +521,12 @@ export class ZxAIClient extends EventEmitter2 {
 
                             if (
                                 !this.alertedNodes[alertedNode.node] &&
-                                (this.bootOptions.fleet.includes(alertedNode.node) ||
+                                (this.bootOptions.fleet.includes(state.getAddress(alertedNode.node)) ||
                                     this.bootOptions.fleet.includes(ALL_EDGE_NODES))
                             ) {
                                 client.emit(ZxAI_ENGINE_OFFLINE, {
                                     node: alertedNode.node,
+                                    address: state.getAddress(alertedNode.node),
                                 });
                             }
 
@@ -526,27 +539,33 @@ export class ZxAIClient extends EventEmitter2 {
                                 delete this.alertedNodes[nodeName];
 
                                 if (
-                                    this.bootOptions.fleet.includes(nodeName) ||
+                                    this.bootOptions.fleet.includes(state.getAddress(nodeName)) ||
                                     this.bootOptions.fleet.includes(ALL_EDGE_NODES)
                                 ) {
                                     client.emit(ZxAI_ENGINE_ONLINE, {
                                         node: nodeName,
+                                        address: state.getAddress(nodeName),
                                     });
                                 }
                             }
                         });
                     }
                     break;
-                case MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH:
-                    this.universeAddresses = Object.assign(this.universeAddresses, message.data);
+                case MESSAGE_TYPE_REFRESH_ADDRESSES:
+                    state.onAddressesUpdateReceived({
+                        nodes: message.nodes,
+                        addresses: message.addresses,
+                    });
                     break;
                 case MESSAGE_TYPE_THREAD_MEMORY_USAGE:
                     this.memoryUsageStats.detailed[message.threadId] = message.data;
                     break;
                 case MESSAGE_TYPE_OBSERVED_NODE:
-                    state.markNodeAsSeen(message.data.node, message.data.timestamp);
+                    state.markAsSeen(message.data.address, message.data.timestamp);
                     break;
                 case MESSAGE_TYPE_SUPERVISOR_STATUS:
+                    // console.log(message); // TODO:
+
                     state.storeNetworkInfo(message.data);
                     break;
                 case MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD:
@@ -558,10 +577,13 @@ export class ZxAIClient extends EventEmitter2 {
                     );
                     break;
                 case MESSAGE_TYPE_HEARTBEAT:
-                    if (message.success && message.error === null) {
+                    if (message.error === null) {
                         state.nodeInfoUpdate(message.data);
                         this.emit(ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE, {
-                            node: message.data?.EE_PAYLOAD_PATH[0] ?? null,
+                            node: message.context?.node ?? null,
+                        });
+                        this.emit(ZxAI_RECEIVED_HEARTBEAT_FROM_ADDRESS, {
+                            address: message.context?.address ?? null,
                         });
                     }
                     break;
@@ -572,12 +594,12 @@ export class ZxAIClient extends EventEmitter2 {
                     // TODO: should emit EXCEPTIONS and ABNORMAL FUNCTIONING
                     break;
                 case MESSAGE_TYPE_PAYLOAD:
-                    this.maybeCallInstanceCallback(message);
+                    this._maybeCallInstanceCallback(message);
 
                     client.emit(
                         message.context.instance.signature,
                         null, // no error
-                        message.context,
+                        message.context, // todo: add "type": "payload" to context - target emit all on path/pipeline/etc to bind subscription on any item
                         message.data,
                     );
                     break;
@@ -606,7 +628,7 @@ export class ZxAIClient extends EventEmitter2 {
                         zxaibc: this.bootOptions.blockchain,
                         stateManager: this.bootOptions.stateManager,
                         redis: this.bootOptions.redis,
-                        fleet: this.bootOptions.fleet,
+                        fleet: hasFleetFilter(this.bootOptions.initialFleet) ? [ ] : [ ALL_EDGE_NODES ],
                     },
                     formatters: this.bootOptions.customFormatters,
                 });
@@ -728,39 +750,63 @@ export class ZxAIClient extends EventEmitter2 {
     }
 
     /**
+     * TODO: async
      * Method for registering a new network node without rebooting the client.
      *
      * @param {string} node The node to register.
      * @return {void}
      */
     registerEdgeNode(node) {
+        const address = this.state.getAddress(node);
+        if (!address) {
+            this.logger.debug(`${node} is not an address, retrying registration in 2s...`);
+            setTimeout(() => {
+                this.registerEdgeNode(node);
+            }, 2000);
+
+            return;
+        }
+
         const fleet = this.state.getFleetNodes();
-        if (!fleet.includes(node)) {
-            this.bootOptions.fleet = [...fleet, node];
-            this.state.broadcastUpdateFleet({ node, action: 1, });
+        if (!fleet.includes(address)) {
+            this.bootOptions.fleet = [...fleet, address];
+            this.state.broadcastUpdateFleet({ node: address, action: 1, });
 
             this.emit(ZxAI_ENGINE_REGISTERED, {
-                executionEngine: node, // deprecated
-                node: node,
+                executionEngine: this.state.getNodeForAddress(address),
+                node: this.state.getNodeForAddress(address),
+                address,
             });
         }
     }
 
     /**
+     * TODO: async
      * Method for deregistering a network node without rebooting the client.
      *
      * @param {string} node The node to register.
      * @return {void}
      */
     deregisterEdgeNode(node) {
+        const address = this.state.getAddress(node);
+        if (!address) {
+            this.logger.debug(`${node} is not an address, retrying deregistration in 2s...`);
+            setTimeout(() => {
+                this.deregisterEdgeNode(node);
+            }, 2000);
+
+            return;
+        }
+
         let fleet = this.state.getFleetNodes();
-        if (fleet.includes(node)) {
-            this.bootOptions.fleet = fleet.filter(item => item !== node);
-            this.state.broadcastUpdateFleet({ node, action: -1 });
+        if (fleet.includes(address)) {
+            this.bootOptions.fleet = fleet.filter(item => item !== address);
+            this.state.broadcastUpdateFleet({ node: address, action: -1 });
 
             this.emit(ZxAI_ENGINE_DEREGISTERED, {
-                executionEngine: node, // deprecated
-                node: node,
+                executionEngine: this.state.getNodeForAddress(address),
+                node: this.state.getNodeForAddress(address),
+                address,
             });
         }
     }
@@ -896,8 +942,10 @@ export class ZxAIClient extends EventEmitter2 {
      * @return {ZxAIClient}
      */
     setInstanceCallback(node, instance, callback) {
-        if (!this.instanceCallbacks[node]) {
-            this.instanceCallbacks[node] = {};
+        const targetAddress = this.state.getAddress(node);
+
+        if (!this.instanceCallbacks[targetAddress]) {
+            this.instanceCallbacks[targetAddress] = {};
         }
 
         let instanceName = null;
@@ -909,11 +957,11 @@ export class ZxAIClient extends EventEmitter2 {
             throw new Error('Invalid instance provided for attaching callback.');
         }
 
-        if (!this.instanceCallbacks[node][instanceName]) {
-            this.instanceCallbacks[node][instanceName] = null;
+        if (!this.instanceCallbacks[targetAddress][instanceName]) {
+            this.instanceCallbacks[targetAddress][instanceName] = null;
         }
 
-        this.instanceCallbacks[node][instanceName] = callback;
+        this.instanceCallbacks[targetAddress][instanceName] = callback;
 
         return this;
     }
@@ -929,14 +977,16 @@ export class ZxAIClient extends EventEmitter2 {
     }
 
     /**
-     * Returns a `NodeManager` for a specific node.
+     * Returns a `NodeManager` for a specific node/address.
      *
-     * @param node
+     * @param {string} node
      * @return {Promise<NodeManager|null>}
      */
     async getNodeManager(node) {
-        if (await this._checkNode(node)) {
-            return NodeManager.getNodeManager(this, node, this.logger);
+        const address = this.state.getAddress(node);
+
+        if (address && await this._checkNode(address)) {
+            return NodeManager.getNodeManager(this, address, this.logger);
         }
 
         return null;
@@ -961,8 +1011,13 @@ export class ZxAIClient extends EventEmitter2 {
             });
         }
 
+        const receiver = this.state.getAddress(node);
+        if (!receiver) {
+            throw 'RECEIVER NOT FOUND';
+        }
+
         message['INITIATOR_ID'] = this.bootOptions.initiator;
-        message['EE_ID'] = node;
+        message['EE_ID'] = receiver;
         message['TIME'] = new Date();
 
         const watches = [];
@@ -984,7 +1039,7 @@ export class ZxAIClient extends EventEmitter2 {
                 }
 
                 watches.push([
-                    node,
+                    receiver,
                     message['PAYLOAD']['NAME'],
                     message['PAYLOAD']['SIGNATURE'],
                     message['PAYLOAD']['INSTANCE_ID'],
@@ -999,17 +1054,17 @@ export class ZxAIClient extends EventEmitter2 {
                     stickyId = message.PAYLOAD.PIPELINE_COMMAND[STICKY_COMMAND_ID_KEY];
                 }
 
-                watches.push([node, message['PAYLOAD']['NAME'], null, null]);
+                watches.push([receiver, message['PAYLOAD']['NAME'], null, null]);
 
                 break;
             case NODE_COMMAND_ARCHIVE_CONFIG:
-                watches.push([node, message['PAYLOAD'], null, null]);
+                watches.push([receiver, message['PAYLOAD'], null, null]);
 
                 break;
             case NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE:
                 message['PAYLOAD'].forEach((updateInstanceCommand) => {
                     watches.push([
-                        node,
+                        receiver,
                         updateInstanceCommand['NAME'],
                         updateInstanceCommand['SIGNATURE'],
                         updateInstanceCommand['INSTANCE_ID'],
@@ -1038,7 +1093,7 @@ export class ZxAIClient extends EventEmitter2 {
                         ACTION: message.ACTION,
                         PAYLOAD: message.PAYLOAD,
                     }),
-                    this.universeAddresses[node],
+                    receiver,
                 );
 
                 toSend = {
@@ -1051,7 +1106,7 @@ export class ZxAIClient extends EventEmitter2 {
                 };
             }
 
-            mqttConnection.publish(`${this.bootOptions.topicRoot}/${node}/config`, blockchainEngine.sign(toSend));
+            mqttConnection.publish(`${this.bootOptions.topicRoot}/${receiver}/config`, blockchainEngine.sign(toSend));
 
             if (watches.length === 0) {
                 resolve({
@@ -1064,35 +1119,35 @@ export class ZxAIClient extends EventEmitter2 {
     }
 
     /**
-     * Private method for checking if a specified node is in the controlled fleet or if it's heartbeat has been
+     * Private method for checking if a specified address is in the controlled fleet or if it's heartbeat has been
      * witnessed.
      *
-     * @param {string} node
+     * @param {string} address
      * @return {Promise<boolean>}
      * @private
      */
-    async _checkNode(node) {
+    async _checkNode(address) {
         let filtered = true;
         if (this.bootOptions.fleet.length === 1 && this.bootOptions.fleet[0] === ALL_EDGE_NODES) {
             filtered = false;
         }
 
         const fleet = this.state.getFleetNodes();
-        if (filtered && !fleet.includes(node)) {
-            this.logger.error(`[Main Thread] Node ${node} is not registered in the working fleet.`);
+        if (filtered && !fleet.includes(address)) {
+            this.logger.error(`[Main Thread] Node ${this.state.getNodeForAddress(address)} (${address}) is not registered in the working fleet.`);
 
             return false;
         }
 
-        if (this.alertedNodes[node]) {
-            this.logger.error(`[Main Thread] Node ${node} is offline.`);
+        if (this.alertedNodes[this.state.getNodeForAddress(address)]) {
+            this.logger.error(`[Main Thread] Node ${this.state.getNodeForAddress(address)} (${address}) is offline.`);
 
             return false;
         }
 
         const universe = await this.getUniverse();
-        if (!universe[node]) {
-            this.logger.error(`[Main Thread] Node ${node} is either offline or no heartbeat has been witnessed yet.`);
+        if (!universe[address]) {
+            this.logger.error(`[Main Thread] Node ${this.state.getNodeForAddress(address)} (${address}) is either offline or no heartbeat has been witnessed yet.`);
 
             return false;
         }
@@ -1100,20 +1155,20 @@ export class ZxAIClient extends EventEmitter2 {
         return true;
     }
 
-    maybeCallInstanceCallback(message) {
-        if (this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]] !== null &&
-            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]] !== undefined &&
+    _maybeCallInstanceCallback(message) {
+        if (this.instanceCallbacks[message.context.address] !== null &&
+            this.instanceCallbacks[message.context.address] !== undefined &&
             message.context.metadata.EE_PAYLOAD_PATH[3] !== null &&
             typeof message.context.metadata.EE_PAYLOAD_PATH[3] === 'string' &&
-            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] !== null &&
-            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] !== undefined &&
-            typeof this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]] === 'function'
+            this.instanceCallbacks[message.context.address][message.context.metadata.EE_PAYLOAD_PATH[3]] !== null &&
+            this.instanceCallbacks[message.context.address][message.context.metadata.EE_PAYLOAD_PATH[3]] !== undefined &&
+            typeof this.instanceCallbacks[message.context.address][message.context.metadata.EE_PAYLOAD_PATH[3]] === 'function'
         ) {
             let err = null;
             let context = message.context;
             let data = message.data;
 
-            this.instanceCallbacks[message.context.metadata.EE_PAYLOAD_PATH[0]][message.context.metadata.EE_PAYLOAD_PATH[3]](err, context, data);
+            this.instanceCallbacks[message.context.address][message.context.metadata.EE_PAYLOAD_PATH[3]](err, context, data);
         }
     }
 }
