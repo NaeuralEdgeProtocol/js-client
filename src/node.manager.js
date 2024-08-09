@@ -44,6 +44,14 @@ export class NodeManager {
     node;
 
     /**
+     * The node name this manager is attached to.
+     *
+     * @type {string}
+     * @private
+     */
+    nodeName;
+
+    /**
      * The list of open Pipelines on this node.
      *
      * @type {Array<Pipeline>}
@@ -70,6 +78,7 @@ export class NodeManager {
     constructor(client, node, logger) {
         this.client = client;
         this.node = node;
+        this.nodeName = client.state.getNodeForAddress(node);
         this.logger = logger;
     }
 
@@ -210,7 +219,7 @@ export class NodeManager {
      */
     async getHardwareStats(steps = 1, periodH = 1, extra = {}, useSupervisor = false) {
         let command = {
-            node: this.node,
+            node: this.nodeName,
             request: 'history',
             options: {
                 step: steps,
@@ -310,7 +319,7 @@ export class NodeManager {
 
         let pipeline = await this.getPipeline(id);
         if (pipeline) {
-            throw new Error(`Pipeline with name "${id}" already exists on "${this.node}"!`);
+            throw new Error(`Pipeline with name "${id}" already exists on ${this.nodeName} (${this.node})!`);
         }
 
         const config = dataSource.config;
@@ -672,7 +681,6 @@ export class NodeManager {
         return this;
     }
 
-    // TODO: instance watches should be handled here
     /**
      * Commits the changes registered for the node.
      *

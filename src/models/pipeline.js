@@ -168,7 +168,7 @@ export class Pipeline {
     }
 
     /**
-     * Returns the name of the NaeuralEdgeProtocol Network Node this pipeline runs on.
+     * Returns the address of the NaeuralEdgeProtocol Network Node this pipeline runs on.
      *
      * @return {string}
      */

@@ -63,10 +63,11 @@ export const MESSAGE_TYPE_NOTIFICATION = 'NOTIFICATION';
 export const MESSAGE_TYPE_OBSERVED_NODE = 'observed.node';
 export const MESSAGE_TYPE_SUPERVISOR_STATUS = 'supervisor.status';
 export const MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE = 'network.request.response';
-export const MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH = 'network.addresses.refresh';
 export const MESSAGE_TYPE_THREAD_MEMORY_USAGE = 'thread.memory.usage';
 export const MESSAGE_TYPE_NETWORK_NODE_DOWN = 'network.node.down';
 export const MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD = 'network.supervisor.payload';
+export const MESSAGE_TYPE_THREAD_LOG = 'thread.logger';
+export const MESSAGE_TYPE_REFRESH_ADDRESSES = 'refresh-addresses';
 
 export const REDIS_LOCK_EXPIRATION_TIME = 100;
 export const REDIS_LOCK_MAX_RETRIES = 10;
@@ -102,6 +103,7 @@ export const ZxAI_CLIENT_BOOTED = 'ZxAIBOOT';
 export const ZxAI_ENGINE_REGISTERED = 'ZxAIEEREG';
 export const ZxAI_ENGINE_DEREGISTERED = 'ZxAIEEDEREG';
 export const ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE = 'ZxAICONEE';
+export const ZxAI_RECEIVED_HEARTBEAT_FROM_ADDRESS = 'ZxAICONADDR';
 export const ZxAI_CLIENT_SYS_TOPIC_UNSUBSCRIBE = 'ZxAICSTUS';
 export const ZxAI_CLIENT_DISCONNECTED = 'ZxAICDISCONN';
 export const ZxAI_CLIENT_CONNECTION_ERROR = 'ZxAICCONNERR';
@@ -152,5 +154,7 @@ export const logLevels = {
 
 export const levelNames = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
 
+export const ADDRESSES_UPDATES_INBOX = 'address-updates';
+export const ADDRESS_UPDATE_EVENT = 'address-update-event';
 export const FLEET_UPDATES_INBOX = 'fleet-updates';
 export const FLEET_UPDATE_EVENT = 'fleet-update-event';

@@ -95,7 +95,7 @@ export class DataCaptureThread {
             cleanConfig = applyDefaultsToObject(cleanConfig, schema, dirty); // on newly created, add optional properties
             if (!checkMandatoryFields(cleanConfig, schema)) {
                 throw new Error(
-                    "Mandatory fields are missing from the DCT configuration. Couldn't properly instantiate.",
+                    'Mandatory fields are missing from the DCT configuration. Couldn\'t properly instantiate.',
                 );
             }
 

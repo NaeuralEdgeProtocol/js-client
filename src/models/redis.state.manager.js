@@ -11,7 +11,7 @@ import {
     MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
     NETWORK_STICKY_PAYLOAD_RECEIVED,
     FLEET_UPDATES_INBOX,
-    FLEET_UPDATE_EVENT,
+    FLEET_UPDATE_EVENT, ADDRESSES_UPDATES_INBOX, ADDRESS_UPDATE_EVENT,
 } from '../constants.js';
 import { generateId, sleep } from '../utils/helper.functions.js';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
@@ -21,7 +21,7 @@ import EventEmitter2 from 'eventemitter2';
  * @class RedisStateManager
  *
  * This is the implementation of the state manager leveraging Redis as state storage. This is the manager to be used
- * when a multi-process instance of the SDK is needed.
+ * when a multiprocess instance of the SDK is needed.
  */
 export class RedisStateManager extends EventEmitter2 {
     /**
@@ -104,6 +104,15 @@ export class RedisStateManager extends EventEmitter2 {
             }
         });
 
+        this.subscriptionChannel.subscribe(ADDRESSES_UPDATES_INBOX, (err) => {
+            if (err) {
+                this.logger.error(`[Redis State Manager] Error while subscribing to address updates inbox (id: ${ADDRESSES_UPDATES_INBOX}}).`);
+            } else {
+                this.logger.log(`[Redis State Manager] Inbox subscription ok (id: ${ADDRESSES_UPDATES_INBOX}}).`);
+            }
+        });
+
+
         this.subscriptionChannel.on('message', (channel, strMessage) => {
             if (channel === inboxId) {
                 const message = JSON.parse(strMessage);
@@ -114,6 +123,8 @@ export class RedisStateManager extends EventEmitter2 {
                 }
             } else if (channel === FLEET_UPDATES_INBOX) {
                 this.emit(FLEET_UPDATE_EVENT, JSON.parse(strMessage));
+            } else if (channel === ADDRESSES_UPDATES_INBOX) {
+                this.emit(ADDRESS_UPDATE_EVENT, JSON.parse(strMessage));
             }
         });
     }
@@ -202,7 +213,8 @@ export class RedisStateManager extends EventEmitter2 {
      */
     nodeInfoUpdate(info) {
         const now = new Date().getTime();
-        const path = info.EE_PAYLOAD_PATH;
+        const address = info.EE_SENDER;
+
         const nodeTime = {
             date: info.EE_TIMESTAMP,
             utc: info.EE_TIMEZONE,
@@ -215,12 +227,12 @@ export class RedisStateManager extends EventEmitter2 {
             data: data,
         };
 
-        this.cache.set(RedisStateManager.getRedisHeartbeatKey(path[0]), JSON.stringify(state), 'EX', 180);
+        this.cache.set(RedisStateManager._getRedisHeartbeatKey(address), JSON.stringify(state), 'EX', 180);
         this.publishChannel.publish(
             this.pubSubChannel,
             JSON.stringify({
                 command: THREAD_COMMAND_UPDATE_STATE,
-                node: path[0],
+                address: address,
                 state: data.pipelines,
             }),
         );
@@ -234,7 +246,7 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {Promise<ObservedNodes>}
      */
     async getUniverse() {
-        const [key] = RedisStateManager.getRedisUniverseKeyAndLock();
+        const [key] = RedisStateManager._getRedisUniverseKeyAndLock();
 
         return this.cache.get(key).then((value) => {
             if (!value || typeof value !== 'string') {
@@ -248,12 +260,12 @@ export class RedisStateManager extends EventEmitter2 {
     /**
      * Will mark a specific node as seen in the dictionary of nodes.
      *
-     * @param node
-     * @param timestamp
+     * @param {string} address
+     * @param {number} timestamp
      * @return {Promise<boolean>}
      */
-    async markNodeAsSeen(node, timestamp) {
-        const [key, lock] = RedisStateManager.getRedisUniverseKeyAndLock();
+    async markNodeAsSeen(address, timestamp) {
+        const [key, lock] = RedisStateManager._getRedisUniverseKeyAndLock();
         const lockAcquired = await this._waitForLock(lock, REDIS_LOCK_RETRY_INTERVAL, REDIS_LOCK_MAX_RETRIES);
 
         if (lockAcquired) {
@@ -266,7 +278,7 @@ export class RedisStateManager extends EventEmitter2 {
                         knownUniverse = JSON.parse(value);
                     }
 
-                    knownUniverse[node] = timestamp;
+                    knownUniverse[address] = timestamp;
 
                     return this.cache.set(key, JSON.stringify(knownUniverse), 'EX', 3600);
                 });
@@ -283,13 +295,13 @@ export class RedisStateManager extends EventEmitter2 {
     }
 
     /**
-     * Returns the processed heartbeat cached for a specific `node`.
+     * Returns the processed heartbeat cached for a specific `address`.
      *
-     * @param {string} node
+     * @param {string} address
      * @return {Promise<Object>}
      */
-    async getNodeInfo(node) {
-        return this.cache.get(RedisStateManager.getRedisHeartbeatKey(node)).then((value) => {
+    async getNodeInfo(address) {
+        return this.cache.get(RedisStateManager._getRedisHeartbeatKey(address)).then((value) => {
             if (!value || typeof value !== 'string') {
                 return null;
             }
@@ -306,14 +318,14 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {Promise<boolean>}
      */
     async updateNetworkSnapshot(supervisor, update) {
-        const [key, lock] = RedisStateManager.getSupervisorKeyAndLock(supervisor);
+        const [key, lock] = RedisStateManager._getSupervisorKeyAndLock(supervisor);
         const lockAcquired = await this._waitForLock(lock, REDIS_LOCK_RETRY_INTERVAL, REDIS_LOCK_MAX_RETRIES);
 
         if (lockAcquired) {
             try {
                 await this.cache.set(key, JSON.stringify(update), 'EX', 3600 * 24 * 7);
 
-                return this.markSupervisor(supervisor);
+                return this.markSupervisor(supervisor); // TODO: keep supervisors based on network snapshot
             } catch (error) {
                 this.logger.error(`[Redis State Manager] Error updating Redis key "${key}". Reason: ${error.message}`);
             } finally {
@@ -330,7 +342,7 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {Promise<string[]>}
      */
     async getNetworkSupervisors() {
-        const [key] = RedisStateManager.getObservedSupervisorsKeyAndLock();
+        const [key] = RedisStateManager._getObservedSupervisorsKeyAndLock();
 
         return this.cache.get(key).then((value) => {
             if (!value || typeof value !== 'string') {
@@ -348,7 +360,7 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {Promise<Object>}
      */
     async getNetworkSnapshot(supervisor) {
-        const [key] = RedisStateManager.getSupervisorKeyAndLock(supervisor);
+        const [key] = RedisStateManager._getSupervisorKeyAndLock(supervisor);
 
         return this.cache.get(key).then((value) => {
             if (!value || typeof value !== 'string') {
@@ -366,7 +378,7 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {Promise<boolean>}
      */
     async markSupervisor(supervisor) {
-        const [key, lock] = RedisStateManager.getObservedSupervisorsKeyAndLock();
+        const [key, lock] = RedisStateManager._getObservedSupervisorsKeyAndLock();
         const lockAcquired = await this._waitForLock(lock, REDIS_LOCK_RETRY_INTERVAL, REDIS_LOCK_MAX_RETRIES);
 
         if (lockAcquired) {
@@ -442,7 +454,7 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {string}
      * @private
      */
-    static getRedisHeartbeatKey(node) {
+    static _getRedisHeartbeatKey(node) {
         return `state:${node}:heartbeat`;
     }
 
@@ -452,8 +464,18 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {string[]}
      * @private
      */
-    static getRedisUniverseKeyAndLock() {
+    static _getRedisUniverseKeyAndLock() {
         return ['known:universe', 'known:universe:lock'];
+    }
+
+    /**
+     * Returns the cache key name and lock name for the observed universe addresses storage.
+     *
+     * @return {string[]}
+     * @private
+     */
+    static _getRedisUniverseAddressesKeyAndLock() {
+        return ['known:universe-addrs', 'known:universe-addrs:lock'];
     }
 
     /**
@@ -462,7 +484,7 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {string[]}
      * @private
      */
-    static getObservedSupervisorsKeyAndLock() {
+    static _getObservedSupervisorsKeyAndLock() {
         return ['network:supervisors', 'network:supervisors:lock'];
     }
 
@@ -473,7 +495,7 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {string[]}
      * @private
      */
-    static getSupervisorKeyAndLock(supervisor) {
+    static _getSupervisorKeyAndLock(supervisor) {
         return [`network:snapshot:${supervisor}`, `network:snapshot:${supervisor}:lock`];
     }
 }

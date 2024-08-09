@@ -1,4 +1,5 @@
 import {
+    ADDRESS_UPDATE_EVENT,
     FLEET_UPDATE_EVENT,
     INTERNAL_STATE_MANAGER,
     NETWORK_REQUEST_RESPONSE_NOTIFICATION,
@@ -9,7 +10,7 @@ import {
     TIMEOUT_TO_FIRST_RESPONSE,
     UNKNOWN_STATE_MANAGER,
 } from '../constants.js';
-import { hasFleetFilter } from '../utils/helper.functions.js';
+import {hasFleetFilter, isAddress} from '../utils/helper.functions.js';
 import { NetworkRequestsHandler } from './network.requests.handler.js';
 import EventEmitter2 from 'eventemitter2';
 
@@ -60,20 +61,31 @@ export class State extends EventEmitter2 {
      */
     networkRequestsHandler;
 
+    addressToNodeName = {};
+
+    nodeNameToAddress = {};
+
+    /**
+     * {Logger} logger
+     */
+    logger;
+
     /**
      * The `State` constructor. Will attach any needed listeners.
      *
      * @param {string} type
      * @param {InternalStateManager|RedisStateManager} manager
      * @param {Object} options
+     * @param {Logger} logger
      */
-    constructor(type, manager, options) {
+    constructor(type, manager, options, logger) {
         super();
 
         this.fleet = options.fleet;
         this.type = type;
         this.manager = manager;
         this.networkRequestsHandler = new NetworkRequestsHandler();
+        this.logger = logger;
 
         const self = this;
         this.manager.on(NETWORK_REQUEST_RESPONSE_NOTIFICATION, (message) => {
@@ -85,7 +97,11 @@ export class State extends EventEmitter2 {
         });
 
         this.manager.on(FLEET_UPDATE_EVENT, (message) => {
-            self.onRemoteFleetUpdateReceived(message);
+            self._onRemoteFleetUpdateReceived(message);
+        });
+
+        this.manager.on(ADDRESS_UPDATE_EVENT, (message) => {
+            self.onAddressesUpdateReceived(message);
         });
     }
 
@@ -106,21 +122,37 @@ export class State extends EventEmitter2 {
      * @param {Object} message
      */
     onRequestResponseNotification(self, message) {
-        const request = self.networkRequestsHandler.find(message.context.metadata.EE_PAYLOAD_PATH);
+        const path = [...message.context.metadata.EE_PAYLOAD_PATH];
+        path[0] = this.getAddress(path[0]);
+
+        const request = self.networkRequestsHandler.find(path);
         if (request) {
             request.process(message);
             if (request.isClosed()) {
                 self.manager.broadcastIgnoreRequestId(request.getId(), request.listWatches());
-                self.networkRequestsHandler.destroy(message.context.metadata.EE_PAYLOAD_PATH);
+                self.networkRequestsHandler.destroy(path);
             }
         }
     }
 
-    onRemoteFleetUpdateReceived(eventData) {
+    /**
+     *
+     * @param eventData
+     * @private
+     */
+    _onRemoteFleetUpdateReceived(eventData) {
         if (eventData.action > 0 && !this.fleet.includes(eventData.node)) {
             this.fleet.push(eventData.node);
         } else if (eventData.action < 0 && this.fleet.includes(eventData.node)) {
             this.fleet = this.fleet.filter(item => item !== eventData.node);
+        }
+    }
+
+    onAddressesUpdateReceived(eventData) {
+        this._refreshAddresses(eventData);
+
+        if (this.type === INTERNAL_STATE_MANAGER) {
+            this.manager.broadcastUpdateAddresses(eventData);
         }
     }
 
@@ -140,7 +172,7 @@ export class State extends EventEmitter2 {
      * @return {Promise<Object>}
      */
     async getNodeInfo(node) {
-        return this.manager.getNodeInfo(node);
+        return this.manager.getNodeInfo(this.getAddress(node));
     }
 
     /**
@@ -184,12 +216,14 @@ export class State extends EventEmitter2 {
     /**
      * Will mark a specific node as seen in the dictionary of nodes.
      *
-     * @param {string} node
+     * @param {string} address
      * @param {number} timestamp
      * @return {Promise<boolean>}
      */
-    markNodeAsSeen(node, timestamp) {
-        return this.manager.markNodeAsSeen(node, timestamp);
+    async markAsSeen(address, timestamp) {
+        await this.manager.markNodeAsSeen(address, timestamp);
+
+        return true;
     }
 
     /**
@@ -231,19 +265,21 @@ export class State extends EventEmitter2 {
     async getFleet() {
         const knownUniverse = await this.getUniverse();
         if (hasFleetFilter(this.fleet)) {
-            return this.fleet.map((node) => {
-                if (knownUniverse[node] !== undefined) {
+            return this.fleet.map((address) => {
+                if (knownUniverse[address] !== undefined) {
                     return {
-                        name: node,
+                        node: this.getNodeForAddress(address),
+                        address: address,
                         status: {
-                            online: new Date().getTime() - knownUniverse[node] < NODE_OFFLINE_CUTOFF_TIME,
-                            lastSeen: new Date(knownUniverse[node]),
+                            online: new Date().getTime() - knownUniverse[address] < NODE_OFFLINE_CUTOFF_TIME,
+                            lastSeen: new Date(knownUniverse[address]),
                         },
                     };
                 }
 
                 return {
-                    name: node,
+                    node: this.getNodeForAddress(address),
+                    address: address,
                     status: {
                         online: false,
                         lastSeen: null,
@@ -251,11 +287,12 @@ export class State extends EventEmitter2 {
                 };
             });
         } else {
-            return Object.keys(knownUniverse).map((node_1) => ({
-                name: node_1,
+            return Object.keys(knownUniverse).map((address) => ({
+                name: this.getNodeForAddress(address),
+                address: address,
                 status: {
-                    online: new Date().getTime() - knownUniverse[node_1] < NODE_OFFLINE_CUTOFF_TIME,
-                    lastSeen: new Date(knownUniverse[node_1]),
+                    online: new Date().getTime() - knownUniverse[address] < NODE_OFFLINE_CUTOFF_TIME,
+                    lastSeen: new Date(knownUniverse[address]),
                 },
             }));
         }
@@ -272,11 +309,12 @@ export class State extends EventEmitter2 {
         if (keys.length > 0) {
             const update = {
                 name: data.EE_ID,
+                address: data.EE_SENDER,
                 status: data.CURRENT_NETWORK,
                 timestamp: data.TIMESTAMP_EXECUTION,
             };
 
-            return this.manager.updateNetworkSnapshot(data.EE_ID, update);
+            return this.manager.updateNetworkSnapshot(data.EE_SENDER, update);
         }
     }
 
@@ -381,5 +419,58 @@ export class State extends EventEmitter2 {
         request.setTimeoutIds(firstResponseTimeout, completeTimeout);
 
         return request;
+    }
+
+    /**
+     * Returns the address for a given value if the value is a node name, returns the value if the value is already
+     * and address.
+     *
+     * @param {string} value
+     * @return {string|null}
+     */
+    getAddress(value) {
+        if (isAddress(value)) {
+            return value;
+        }
+
+        return this._getAddressForNode(value);
+    }
+
+    /**
+     * Returns the node name for a given address. Returns null if address has not been observed.
+     *
+     * @param {string} address
+     * @return {string|null}
+     */
+    getNodeForAddress(address) {
+        return this.addressToNodeName[address] ?? null;
+    }
+
+    /**
+     *
+     * @param message
+     * @private
+     */
+    _refreshAddresses(message) {
+        this.logger.debug('Refreshed addresses in state.');
+
+        if (message.nodes !== undefined && message.nodes !== null) {
+            this.nodeNameToAddress = message.nodes;
+        }
+
+        if (message.addresses !== undefined && message.addresses !== null) {
+            this.addressToNodeName = message.addresses;
+        }
+    }
+
+    /**
+     * Returns the address for a given node name. Returns null if node has not been observed.
+     *
+     * @param {string} node
+     * @return {string|null}
+     * @private
+     */
+    _getAddressForNode(node) {
+        return this.nodeNameToAddress[node] ?? null;
     }
 }

@@ -299,7 +299,8 @@ export class NetworkRequest {
      * @return {NetworkRequest}
      */
     updateTarget(notification) {
-        const path = notification.context.metadata.EE_PAYLOAD_PATH;
+        const path = [ ...notification.context.metadata.EE_PAYLOAD_PATH];
+        path[0] = notification.context.address;
 
         this.transactionNotifications.push(notification.data);
 
@@ -329,7 +330,10 @@ export class NetworkRequest {
      * @param {Object} message
      */
     process(message) {
-        if (!this.watches(message.context.metadata.EE_PAYLOAD_PATH) || this.isClosed()) {
+        const path = [ ...message.context.metadata.EE_PAYLOAD_PATH];
+        path[0] = message.context.address;
+
+        if (!this.watches(path) || this.isClosed()) {
             return;
         }
 

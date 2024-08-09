@@ -1,5 +1,5 @@
 import {
-    IN_MEMORY_INBOX_ID,
+    IN_MEMORY_INBOX_ID, MESSAGE_TYPE_REFRESH_ADDRESSES,
     THREAD_COMMAND_IGNORE_SESSION_ID,
     THREAD_COMMAND_UPDATE_FLEET,
     THREAD_COMMAND_UPDATE_STATE,
@@ -63,6 +63,17 @@ export class InternalStateManager extends EventEmitter2 {
         this.logger = logger;
     }
 
+    broadcastUpdateAddresses(addresses) {
+        this.logger.log('Address map refreshed. Posting to child threads.');
+
+        [...this.threads.heartbeats, ...this.threads.notifications, ...this.threads.payloads].forEach((thread) => {
+            thread.postMessage({
+                command: MESSAGE_TYPE_REFRESH_ADDRESSES,
+                ...addresses,
+            });
+        });
+    }
+
     /**
      * Broadcasts working fleet to all registered threads.
      *
@@ -122,29 +133,31 @@ export class InternalStateManager extends EventEmitter2 {
      */
     nodeInfoUpdate(info) {
         const now = new Date().getTime();
-        const path = info.EE_PAYLOAD_PATH;
+        const address = info.EE_SENDER;
+
         const nodeTime = {
             date: info.EE_TIMESTAMP,
             utc: info.EE_TIMEZONE,
         };
         const data = info.DATA;
 
-        if (!this.state.hb[path[0]]) {
-            this.state.hb[path[0]] = {
+        // Update node state indexed by address
+        if (!this.state.hb[address]) {
+            this.state.hb[address] = {
                 lastUpdate: null,
                 nodeTime: null,
                 data: null,
             };
         }
 
-        this.state.hb[path[0]].lastUpdate = now;
-        this.state.hb[path[0]].nodeTime = { ...nodeTime };
-        this.state.hb[path[0]].data = { ...data };
+        this.state.hb[address].lastUpdate = now;
+        this.state.hb[address].nodeTime = { ...nodeTime };
+        this.state.hb[address].data = { ...data };
 
         [...this.threads.notifications, ...this.threads.payloads].forEach((thread) => {
             thread.postMessage({
                 command: THREAD_COMMAND_UPDATE_STATE,
-                node: path[0],
+                address: address,
                 state: data.pipelines,
             });
         });
@@ -166,14 +179,14 @@ export class InternalStateManager extends EventEmitter2 {
     }
 
     /**
-     * Returns the processed heartbeat cached for a specific `node`.
+     * Returns the processed heartbeat cached for a specific `address`.
      *
-     * @param {string} node
+     * @param {string} address
      * @return {Promise<Object>}
      */
-    async getNodeInfo(node) {
+    async getNodeInfo(address) {
         return new Promise((resolve) => {
-            resolve(this.state.hb[node] !== undefined ? this.state.hb[node] : null);
+            resolve(this.state.hb[address] !== undefined ? this.state.hb[address] : null);
         });
     }
 
