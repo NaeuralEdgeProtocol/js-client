@@ -836,6 +836,33 @@ export class Thread extends EventEmitter2 {
                         name: context.metadata.EE_PAYLOAD_PATH[3],
                     };
 
+                    if (
+                      (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) ||
+                      (Object.hasOwn(data, 'ON_COMMAND_REQUEST') && !!data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY])
+                    ) {
+                        const stickyId = data.COMMAND_PARAMS !== undefined ?
+                          data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY] :
+                          data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY];
+
+                        const receiver = this.stickySessions[stickyId];
+
+                        if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
+                            this.publishChannel.publish(
+                              receiver,
+                              JSON.stringify({
+                                  threadId: this.threadId,
+                                  type: MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
+                                  success: true,
+                                  error: null,
+                                  data: data,
+                                  context,
+                              }),
+                            );
+
+                            return;
+                        }
+                    }
+
                     this.mainThread.postMessage({
                         threadId: this.threadId,
                         type: MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
