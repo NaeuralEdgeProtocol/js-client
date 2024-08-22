@@ -11,8 +11,8 @@ import {
     MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
     NETWORK_STICKY_PAYLOAD_RECEIVED,
     FLEET_UPDATES_INBOX,
-    FLEET_UPDATE_EVENT, ADDRESSES_UPDATES_INBOX, ADDRESS_UPDATE_EVENT,
-} from '../constants.js';
+    FLEET_UPDATE_EVENT, ADDRESSES_UPDATES_INBOX, ADDRESS_UPDATE_EVENT, MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD
+} from "../constants.js";
 import { generateId, sleep } from '../utils/helper.functions.js';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
 import EventEmitter2 from 'eventemitter2';
@@ -118,6 +118,8 @@ export class RedisStateManager extends EventEmitter2 {
                 const message = JSON.parse(strMessage);
                 if (message.type === MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE) {
                     this.emit(NETWORK_REQUEST_RESPONSE_NOTIFICATION, message);
+                } else if (message.type === MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD){
+                    this.emit(MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD, message);
                 } else {
                     this.emit(NETWORK_STICKY_PAYLOAD_RECEIVED, message);
                 }

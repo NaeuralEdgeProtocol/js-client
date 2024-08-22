@@ -1,15 +1,15 @@
 import {
     ADDRESS_UPDATE_EVENT,
     FLEET_UPDATE_EVENT,
-    INTERNAL_STATE_MANAGER,
+    INTERNAL_STATE_MANAGER, MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
     NETWORK_REQUEST_RESPONSE_NOTIFICATION,
     NETWORK_STICKY_PAYLOAD_RECEIVED,
     NODE_OFFLINE_CUTOFF_TIME,
     REDIS_STATE_MANAGER,
     TIMEOUT_MAX_REQUEST_TIME,
     TIMEOUT_TO_FIRST_RESPONSE,
-    UNKNOWN_STATE_MANAGER,
-} from '../constants.js';
+    UNKNOWN_STATE_MANAGER
+} from "../constants.js";
 import {hasFleetFilter, isAddress} from '../utils/helper.functions.js';
 import { NetworkRequestsHandler } from './network.requests.handler.js';
 import EventEmitter2 from 'eventemitter2';
@@ -94,6 +94,10 @@ export class State extends EventEmitter2 {
 
         this.manager.on(NETWORK_STICKY_PAYLOAD_RECEIVED, (message) => {
             self.emit(NETWORK_STICKY_PAYLOAD_RECEIVED, message);
+        });
+
+        this.manager.on(MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD, (message) => {
+            self.emit(MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD, message);
         });
 
         this.manager.on(FLEET_UPDATE_EVENT, (message) => {

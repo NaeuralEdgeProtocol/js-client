@@ -349,6 +349,7 @@ export class ZxAIClient extends EventEmitter2 {
         }
 
         this.state.on(NETWORK_STICKY_PAYLOAD_RECEIVED, this._onStateMessage(NETWORK_STICKY_PAYLOAD_RECEIVED));
+        this.state.on(MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD, this._onStateMessage(MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD));
 
         Object.keys(this.bootOptions.threads).forEach((threadType) => {
             const count = this.topicPaths[threadType] ? parseInt(this.bootOptions.threads[threadType]) : 0;
@@ -449,6 +450,17 @@ export class ZxAIClient extends EventEmitter2 {
         const client = this;
 
         switch (messageType) {
+            case MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD:
+                return (message) => {
+                    this._maybeCallInstanceCallback(message);
+
+                    client.emit(
+                      ZxAI_SUPERVISOR_PAYLOAD,
+                      null, // no error
+                      message.data,
+                      message.context,
+                    );
+                };
             case NETWORK_STICKY_PAYLOAD_RECEIVED:
                 return (message) => {
                     this._maybeCallInstanceCallback(message);
