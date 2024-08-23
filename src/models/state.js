@@ -292,7 +292,7 @@ export class State extends EventEmitter2 {
             });
         } else {
             return Object.keys(knownUniverse).map((address) => ({
-                name: this.getNodeForAddress(address),
+                node: this.getNodeForAddress(address),
                 address: address,
                 status: {
                     online: new Date().getTime() - knownUniverse[address] < NODE_OFFLINE_CUTOFF_TIME,
