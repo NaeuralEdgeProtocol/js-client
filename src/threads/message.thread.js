@@ -901,7 +901,7 @@ export class Thread extends EventEmitter2 {
             !!this.formatters[message.EE_FORMATTER.toLowerCase()];
 
         if (!knownFormat) {
-            this.logger.warn(`Unknown format ${message.EE_FORMATTER}. Message dropped.`);
+            this.logger.debug(`Unknown format ${message.EE_FORMATTER}. Message dropped.`);
         }
 
         return knownFormat;
