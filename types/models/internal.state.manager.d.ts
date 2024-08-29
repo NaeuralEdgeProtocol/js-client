@@ -40,12 +40,13 @@ export class InternalStateManager extends EventEmitter2 {
      * @private
      */
     private logger;
+    broadcastUpdateAddresses(addresses: any): void;
     /**
      * Broadcasts working fleet to all registered threads.
      *
-     * @param {Array<string>} fleet
+     * @param {*} stateChange
      */
-    broadcastUpdateFleet(fleet: Array<string>): void;
+    broadcastUpdateFleet(stateChange: any): void;
     /**
      * Broadcasts interest for a specific session id to all the registered threads. The session id will be used for
      * correct routing of the received notifications from the network.
@@ -77,12 +78,12 @@ export class InternalStateManager extends EventEmitter2 {
      */
     getUniverse(): Promise<ObservedNodes>;
     /**
-     * Returns the processed heartbeat cached for a specific `node`.
+     * Returns the processed heartbeat cached for a specific `address`.
      *
-     * @param {string} node
+     * @param {string} address
      * @return {Promise<Object>}
      */
-    getNodeInfo(node: string): Promise<any>;
+    getNodeInfo(address: string): Promise<any>;
     /**
      * Will store the network snapshot as seen from a specific supervisor node.
      *

@@ -7,8 +7,8 @@ export const NOTIFICATIONS_STREAM: "notifications";
 /**
  * Enum NaeuralEdgeProtocol Event Stream Types
  */
-export type ZxAIEventType = string;
-export namespace ZxAIEventType {
+export type NaeuralEventType = string;
+export namespace NaeuralEventType {
     export { PAYLOADS_STREAM as PAYLOAD };
     export { HEARTBEATS_STREAM as HEARTBEAT };
     export { NOTIFICATIONS_STREAM as NOTIFICATION };
@@ -18,19 +18,19 @@ export namespace ZxAIEventType {
  */
 export type NaeuralEvent = string;
 export namespace NaeuralEvent {
-    let ZxAI_CLIENT_CONNECTED: string;
-    let ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE: string;
-    let ZxAI_BC_ADDRESS: string;
-    let ZxAI_CLIENT_BOOTED: string;
-    let ZxAI_ENGINE_REGISTERED: string;
-    let ZxAI_ENGINE_DEREGISTERED: string;
-    let ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE: string;
-    let ZxAI_CLIENT_SYS_TOPIC_UNSUBSCRIBE: string;
-    let ZxAI_CLIENT_DISCONNECTED: string;
-    let ZxAI_CLIENT_CONNECTION_ERROR: string;
-    let ZxAI_CLIENT_SHUTDOWN: string;
-    let ZxAI_EXCEPTION: string;
-    let ZxAI_ENGINE_OFFLINE: string;
+    let NAEURAL_CLIENT_CONNECTED: string;
+    let NAEURAL_CLIENT_SYS_TOPIC_SUBSCRIBE: string;
+    let NAEURAL_BC_ADDRESS: string;
+    let NAEURAL_CLIENT_BOOTED: string;
+    let NAEURAL_ENGINE_REGISTERED: string;
+    let NAEURAL_ENGINE_DEREGISTERED: string;
+    let NAEURAL_RECEIVED_HEARTBEAT_FROM_ENGINE: string;
+    let NAEURAL_CLIENT_SYS_TOPIC_UNSUBSCRIBE: string;
+    let NAEURAL_CLIENT_DISCONNECTED: string;
+    let NAEURAL_CLIENT_CONNECTION_ERROR: string;
+    let NAEURAL_CLIENT_SHUTDOWN: string;
+    let NAEURAL_EXCEPTION: string;
+    let NAEURAL_ENGINE_OFFLINE: string;
 }
 /**
  * @extends EventEmitter2
@@ -202,12 +202,12 @@ export class Naeural extends EventEmitter2 {
      */
     getUniverse(): Promise<ObservedNodes>;
     /**
-     * Returns a `NodeManager` for a specific node.
+     * Returns a `NodeManager` for a specific node/address.
      *
-     * @param node
+     * @param {string} node
      * @return {Promise<NodeManager|null>}
      */
-    getNodeManager(node: any): Promise<NodeManager | null>;
+    getNodeManager(node: string): Promise<NodeManager | null>;
     /**
      * Method for publishing a message for an NaeuralEdgeProtocol Node.
      *
@@ -221,7 +221,7 @@ export class Naeural extends EventEmitter2 {
 export type AlertedNodes = {
     [x: string]: number;
 };
-export type ZxAIClientOptions = {
+export type NaeuralOptions = {
     /**
      * - the EventEmitter2 setup
      */

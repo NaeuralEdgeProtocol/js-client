@@ -1,8 +1,8 @@
 /**
- * @typedef {Object} ZxAICommand
+ * @typedef {Object} NaeuralCommand
  * @property {string} ACTION The action to be performed on the network node
- * @property {Object|string} PAYLOAD The payload for the forementioned `ACTION`
- * @property {string} [EE_ID] The node identificator to route the command to, is optional up until the actual publishing.
+ * @property {Object|string} PAYLOAD The payload for the aforementioned `ACTION`
+ * @property {string} [EE_ID] The node identification to route the command to, is optional up until the actual publishing.
  * @property {string} [EE_SENDER] The identity of the sender, is optional up until publishing
  * @property {string} [EE_HASH] The sha256 hash of the `ACTION` and `PAYLOAD`
  * @property {string} [EE_SIGN] The signature of the `EE_HASH` using the `EE_SENDER`'s identity
@@ -10,7 +10,7 @@
  * @property {string} [SESSION_ID] Optional, the session ID to be used when performing the action.
  */
 /**
- * @typedef {Object} ZxAIUpdateInstanceConfig
+ * @typedef {Object} NaeuralUpdateInstanceConfig
  * @property {string} NAME The pipeline id
  * @property {string} SIGNATURE The instance signature
  * @property {string} INSTANCE_ID The instance id
@@ -39,10 +39,11 @@ export const MESSAGE_TYPE_NOTIFICATION: "NOTIFICATION";
 export const MESSAGE_TYPE_OBSERVED_NODE: "observed.node";
 export const MESSAGE_TYPE_SUPERVISOR_STATUS: "supervisor.status";
 export const MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE: "network.request.response";
-export const MESSAGE_TYPE_NETWORK_ADDRESSES_REFRESH: "network.addresses.refresh";
 export const MESSAGE_TYPE_THREAD_MEMORY_USAGE: "thread.memory.usage";
 export const MESSAGE_TYPE_NETWORK_NODE_DOWN: "network.node.down";
 export const MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD: "network.supervisor.payload";
+export const MESSAGE_TYPE_THREAD_LOG: "thread.logger";
+export const MESSAGE_TYPE_REFRESH_ADDRESSES: "refresh-addresses";
 export const REDIS_LOCK_EXPIRATION_TIME: 100;
 export const REDIS_LOCK_MAX_RETRIES: 10;
 export const REDIS_LOCK_RETRY_INTERVAL: 100;
@@ -64,21 +65,22 @@ export const NODE_COMMAND_DELETE_CONFIG_ALL: "DELETE_CONFIG_ALL";
 export const NODE_COMMAND_PIPELINE_COMMAND: "PIPELINE_COMMAND";
 export const NODE_COMMAND_UPDATE_CONFIG: "UPDATE_CONFIG";
 export const NODE_COMMAND_UPDATE_PIPELINE_INSTANCE: "UPDATE_PIPELINE_INSTANCE";
-export const ZxAI_CLIENT_CONNECTED: "ZxAICCONNSUCCESS";
-export const ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE: "ZxAICSTS";
-export const ZxAI_BC_ADDRESS: "ZxAIBCADDR";
-export const ZxAI_CLIENT_BOOTED: "ZxAIBOOT";
-export const ZxAI_ENGINE_REGISTERED: "ZxAIEEREG";
-export const ZxAI_ENGINE_DEREGISTERED: "ZxAIEEDEREG";
-export const ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE: "ZxAICONEE";
-export const ZxAI_CLIENT_SYS_TOPIC_UNSUBSCRIBE: "ZxAICSTUS";
-export const ZxAI_CLIENT_DISCONNECTED: "ZxAICDISCONN";
-export const ZxAI_CLIENT_CONNECTION_ERROR: "ZxAICCONNERR";
-export const ZxAI_CLIENT_SHUTDOWN: "ZxAISHUTDOWN";
-export const ZxAI_EXCEPTION: "ZxAIEX";
-export const ZxAI_ENGINE_OFFLINE: "ZxAIEEOFF";
-export const ZxAI_ENGINE_ONLINE: "ZxAIEEON";
-export const ZxAI_SUPERVISOR_PAYLOAD: "ZxAISUPERPAY";
+export const NAEURAL_CLIENT_CONNECTED: "0xai_CCONNSUCCESS";
+export const NAEURAL_CLIENT_SYS_TOPIC_SUBSCRIBE: "0xai_CSTS";
+export const NAEURAL_BC_ADDRESS: "0xai_BCADDR";
+export const NAEURAL_CLIENT_BOOTED: "0xai_BOOT";
+export const NAEURAL_ENGINE_REGISTERED: "0xai_EEREG";
+export const NAEURAL_ENGINE_DEREGISTERED: "0xai_EEDEREG";
+export const NAEURAL_RECEIVED_HEARTBEAT_FROM_ENGINE: "0xai_CONEE";
+export const NAEURAL_RECEIVED_HEARTBEAT_FROM_ADDRESS: "0xai_CONADDR";
+export const NAEURAL_CLIENT_SYS_TOPIC_UNSUBSCRIBE: "0xai_CSTUS";
+export const NAEURAL_CLIENT_DISCONNECTED: "0xai_CDISCONN";
+export const NAEURAL_CLIENT_CONNECTION_ERROR: "0xai_CCONNERR";
+export const NAEURAL_CLIENT_SHUTDOWN: "0xai_SHUTDOWN";
+export const NAEURAL_EXCEPTION: "0xai_EX";
+export const NAEURAL_ENGINE_OFFLINE: "0xai_EEOFF";
+export const NAEURAL_ENGINE_ONLINE: "0xai_EEON";
+export const NAEURAL_SUPERVISOR_PAYLOAD: "0xai_SUPERPAY";
 export const NOTIFICATION_TYPE_EXCEPTION: "EXCEPTION";
 export const NOTIFICATION_TYPE_NORMAL: "NORMAL";
 export const NOTIFICATION_TYPE_ABNORMAL: "ABNORMAL FUNCTIONING";
@@ -114,17 +116,21 @@ export namespace logLevels {
     let silly: number;
 }
 export const levelNames: string[];
-export type ZxAICommand = {
+export const ADDRESSES_UPDATES_INBOX: "address-updates";
+export const ADDRESS_UPDATE_EVENT: "address-update-event";
+export const FLEET_UPDATES_INBOX: "fleet-updates";
+export const FLEET_UPDATE_EVENT: "fleet-update-event";
+export type NaeuralCommand = {
     /**
      * The action to be performed on the network node
      */
     ACTION: string;
     /**
-     * The payload for the forementioned `ACTION`
+     * The payload for the aforementioned `ACTION`
      */
     PAYLOAD: any | string;
     /**
-     * The node identificator to route the command to, is optional up until the actual publishing.
+     * The node identification to route the command to, is optional up until the actual publishing.
      */
     EE_ID?: string;
     /**
@@ -148,7 +154,7 @@ export type ZxAICommand = {
      */
     SESSION_ID?: string;
 };
-export type ZxAIUpdateInstanceConfig = {
+export type NaeuralUpdateInstanceConfig = {
     /**
      * The pipeline id
      */

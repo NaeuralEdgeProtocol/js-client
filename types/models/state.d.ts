@@ -67,17 +67,17 @@ export class State extends EventEmitter2 {
     /**
      * Will mark a specific node as seen in the dictionary of nodes.
      *
-     * @param {string} node
+     * @param {string} address
      * @param {number} timestamp
      * @return {Promise<boolean>}
      */
-    markNodeAsSeen(node: string, timestamp: number): Promise<boolean>;
+    markAsSeen(address: string, timestamp: number): Promise<boolean>;
     /**
      * Update fleet and notify other interested parties (managed threads or other observing processes) about the update.
      *
-     * @param {Array<string>} fleet
+     * @param {*} stateChange
      */
-    broadcastUpdateFleet(fleet: Array<string>): void;
+    broadcastUpdateFleet(stateChange: any): void;
     /**
      * Broadcast a sticky id that is to be found in the payloads. Any payload containing this session-id should be
      * routed to this specific process.
@@ -85,6 +85,7 @@ export class State extends EventEmitter2 {
      * @param {string} stickySessionId
      */
     broadcastPayloadStickySession(stickySessionId: string): void;
+    getFleetNodes(): string[];
     /**
      * Return the status of the controlled fleet.
      *
@@ -130,6 +131,21 @@ export class State extends EventEmitter2 {
      * @return {NetworkRequest}
      */
     registerMessage(message: any, watches: Array<Array<string>>, onSuccess: Function, onFail: Function): NetworkRequest;
+    /**
+     * Returns the address for a given value if the value is a node name, returns the value if the value is already
+     * and address.
+     *
+     * @param {string} value
+     * @return {string|null}
+     */
+    getAddress(value: string): string | null;
+    /**
+     * Returns the node name for a given address. Returns null if address has not been observed.
+     *
+     * @param {string} address
+     * @return {string|null}
+     */
+    getNodeForAddress(address: string): string | null;
 }
 export type ObservedNodes = {
     [x: string]: number;

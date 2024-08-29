@@ -1,18 +1,18 @@
 /// <reference types="node" />
 /**
- * @typedef {Object} ZxAIBlockchainOptions
+ * @typedef {Object} NaeuralBlockchainOptions
  * @property {boolean} [debug] - Indicates if debugging is enabled.
  * @property {string} [key] - The key for the blockchain.
  * @property {boolean} [encrypt] - Indicates if encryption is enabled.
  * @property {boolean} [secure] - Indicates if the connection should be secure.
  */
 /**
- * @class ZxAIBC
+ * @class NaeuralBC
  *
  * This is the NaeuralEdgeProtocol Network Blockchain engine. Its purpose is to offer any integrator common features like
  * signature checking, message validation or key pair generation.
  */
-export class ZxAIBC {
+export class NaeuralBC {
     /**
      * Generates a pair of public-private keys that can be used throughout this module
      * or when interacting with the network.
@@ -40,9 +40,9 @@ export class ZxAIBC {
     /**
      * NaeuralEdgeProtocol Network Blockchain engine constructor.
      *
-     * @param {ZxAIBlockchainOptions} options
+     * @param {NaeuralBlockchainOptions} options
      */
-    constructor(options: ZxAIBlockchainOptions);
+    constructor(options: NaeuralBlockchainOptions);
     /**
      * Loads a Naeural Identity into the current working session.
      * @param identityPrivateKey
@@ -83,7 +83,7 @@ export class ZxAIBC {
     encrypt(message: any, destinationAddress: any): string;
     decrypt(encryptedDataB64: any, sourceAddress: any): string;
 }
-export type ZxAIBlockchainOptions = {
+export type NaeuralBlockchainOptions = {
     /**
      * - Indicates if debugging is enabled.
      */

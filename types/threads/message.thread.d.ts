@@ -34,7 +34,7 @@ export class Thread extends EventEmitter2 {
             pubSubChannel: string;
         };
         secure: boolean;
-        zxaibc: {
+        naeuralBC: {
             debug: boolean;
             key: any;
             encrypt: boolean;
@@ -43,6 +43,8 @@ export class Thread extends EventEmitter2 {
         fleet: string[];
     };
     state: {};
+    addressToNodeName: {};
+    nodeNameToAddress: {};
     cache: any;
     publishChannel: any;
     subscriptionChannel: any;
@@ -57,9 +59,9 @@ export class Thread extends EventEmitter2 {
     /**
      * The NaeuralEdgeProtocol Blockchain Engine
      *
-     * @type {ZxAIBC}
+     * @type {NaeuralBC}
      */
-    zxaibc: ZxAIBC;
+    naeuralBC: NaeuralBC;
     watchlist: {};
     stickySessions: {};
     logger: any;
@@ -82,14 +84,17 @@ export class Thread extends EventEmitter2 {
     /*************************************
      * Internal thread operations
      *************************************/
+    _refreshAddresses(message: any): void;
     _reportMemoryUsage(): void;
     _updateState(data: any): void;
-    _updateFleet(data: any): void;
+    _updateFleet(eventData: any): void;
     _watchForSessionId(data: any): void;
     _removePathFromWatchlist(watchlist: any, path: any): any;
     _ignoreSessionId(data: any): void;
     _watchForStickySessionId(data: any): void;
-    _makeContext(path: any): {
+    _makeContext(path: any, address: any): {
+        address: any;
+        node: string;
         pipeline: any;
         instance: any;
         metadata: any;
@@ -109,4 +114,4 @@ export class Thread extends EventEmitter2 {
 }
 import EventEmitter2 from 'eventemitter2';
 import * as mqtt from 'mqtt';
-import { ZxAIBC } from '../utils/blockchain.js';
+import { NaeuralBC } from '../utils/blockchain.js';

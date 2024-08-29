@@ -1,6 +1,6 @@
-import { ZxAIClient } from "./client";
+import { Naeural } from "./client";
 import { Logger } from "./app.logger";
-import { ZxAIUpdateInstanceConfig } from "./constants";
+import { NaeuralUpdateInstanceConfig } from "./constants";
 
 /**
  * @class NodeManager
@@ -11,12 +11,12 @@ export class NodeManager {
     /**
      * Returns an instance of a NodeManager for the requested `node`.
      *
-     * @param {ZxAIClient} client
+     * @param {Naeural} client
      * @param {string} node
      * @param {Logger} logger
      * @return {NodeManager}
      */
-    static getNodeManager(client: ZxAIClient, node: string, logger: Logger): NodeManager;
+    static getNodeManager(client: Naeural, node: string, logger: Logger): NodeManager;
     /**
      * Static method that pushes a PluginInstance to a Pipeline. If the `nowatch` flag is set to true, this operation
      * will not automatically append a watch on this instance in the next network request. This behavior is needed when
@@ -38,13 +38,13 @@ export class NodeManager {
      * Returns the change set list for all the plugin instances running on this pipeline.
      *
      * @param {Pipeline} pipeline
-     * @return {Promise<ZxAIUpdateInstanceConfig[]>}
+     * @return {Promise<NaeuralUpdateInstanceConfig[]>}
      */
-    static compilePipelineBatchUpdateInstances(pipeline: Pipeline): Promise<ZxAIUpdateInstanceConfig[]>;
+    static compilePipelineBatchUpdateInstances(pipeline: Pipeline): Promise<NaeuralUpdateInstanceConfig[]>;
     /**
      * The NodeManager constructor.
      *
-     * @param {ZxAIClient} client
+     * @param {Naeural} client
      * @param {string} node
      * @param {Logger} logger
      * @private
@@ -53,7 +53,7 @@ export class NodeManager {
     /**
      * The network client reference.
      *
-     * @type {ZxAIClient}
+     * @type {Naeural}
      * @private
      */
     private client;

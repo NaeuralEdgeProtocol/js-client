@@ -2,9 +2,9 @@ import {AllowedValues, SchemaDefinition} from "./schema.providers";
 
 export function encode(code: string): Promise<string>;
 export function decode(value: string): Promise<string>;
-export function camelToZxAIFormat(input: string): string;
-export function convertKeysToZxAIFormat(obj: any): any;
-export function zxAIFormatToCamel(key: string): string;
+export function camelToNaeuralFormat(input: string): string;
+export function convertKeysToNaeuralFormat(obj: any): any;
+export function naeuralFormatToCamel(key: string): string;
 export function convertKeysToCamelFormat(obj: any): any;
 export function urlSafeBase64ToBase64(urlSafeBase64: string): string;
 export function base64ToUrlSafeBase64(base64: string): string;
@@ -18,3 +18,4 @@ export function hasFleetFilter(fleet: Array<string>): boolean;
 export function IsObject(value: any): boolean;
 export function generateId(): string;
 export function computeDifferences(original: any, modified: any): any | null;
+export function isAddress(value: string): boolean;

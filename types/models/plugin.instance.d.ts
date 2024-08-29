@@ -1,6 +1,6 @@
 import {Pipeline} from "./pipeline";
 import {SchemaDefinition} from "../utils/schema.providers";
-import {ZxAICommand, ZxAIUpdateInstanceConfig} from "../constants";
+import {NaeuralCommand, NaeuralUpdateInstanceConfig} from "../constants";
 
 export const ID_TAGS="ID_TAGS";
 export const WORKING_HOURS="WORKING_HOURS";
@@ -82,8 +82,9 @@ export class PluginInstance {
      * The instance schedule timezone.
      *
      * @type {string}
+     * @private
      */
-    scheduleTimezone: any;
+    private scheduleTimezone;
     /**
      * Flag for signalling if this particular instance is outside its configured working schedule.
      *
@@ -301,9 +302,9 @@ export class PluginInstance {
      * Computes the instance update config by comparing the config running on the NaeuralEdgeProtocol Node with the proposed
      * configuration stored on the instance model.
      *
-     * @return {Promise<ZxAIUpdateInstanceConfig>}
+     * @return {Promise<NaeuralUpdateInstanceConfig>}
      */
-    makeUpdateInstancePayload(): Promise<ZxAIUpdateInstanceConfig>;
+    makeUpdateInstancePayload(): Promise<NaeuralUpdateInstanceConfig>;
     /**
      * Puts together all the information in one config object.
      *
@@ -314,7 +315,7 @@ export class PluginInstance {
      * Returns the instance command wrapped within an NaeuralEdgeProtocol Node command.
      *
      * @param command
-     * @return {ZxAICommand}
+     * @return {NaeuralCommand}
      */
-    getRawInstanceCommandPayload(command: any): ZxAICommand;
+    getRawInstanceCommandPayload(command: any): NaeuralCommand;
 }
