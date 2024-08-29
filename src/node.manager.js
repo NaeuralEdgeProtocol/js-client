@@ -22,7 +22,7 @@ export class NodeManager {
     /**
      * The network client reference.
      *
-     * @type {ZxAIClient}
+     * @type {Naeural}
      * @private
      */
     client;
@@ -70,7 +70,7 @@ export class NodeManager {
     /**
      * The NodeManager constructor.
      *
-     * @param {ZxAIClient} client
+     * @param {Naeural} client
      * @param {string} node
      * @param {Logger} logger
      * @private
@@ -85,7 +85,7 @@ export class NodeManager {
     /**
      * Returns an instance of a NodeManager for the requested `node`.
      *
-     * @param {ZxAIClient} client
+     * @param {Naeural} client
      * @param {string} node
      * @param {Logger} logger
      * @return {NodeManager}
@@ -159,7 +159,7 @@ export class NodeManager {
      * Returns the change set list for all the plugin instances running on this pipeline.
      *
      * @param {Pipeline} pipeline
-     * @return {Promise<ZxAIUpdateInstanceConfig[]>}
+     * @return {Promise<NaeuralUpdateInstanceConfig[]>}
      */
     static async compilePipelineBatchUpdateInstances(pipeline) {
         const changeSet = [];

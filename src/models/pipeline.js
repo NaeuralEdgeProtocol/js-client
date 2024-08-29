@@ -63,7 +63,7 @@ export class Pipeline {
     /**
      * The reference to the NaeuralEdgeProtocol Network Client.
      *
-     * @type {ZxAIClient}
+     * @type {Naeural}
      * @private
      */
     client;
@@ -83,7 +83,7 @@ export class Pipeline {
      * @param {string} node
      * @param {string} name
      * @param {DataCaptureThread} dct
-     * @param {ZxAIClient} client
+     * @param {Naeural} client
      * @private
      */
     constructor(initiator, node, name, dct, client) {
@@ -97,7 +97,7 @@ export class Pipeline {
     /**
      * Static factory for constructing Pipeline models.
      *
-     * @param {ZxAIClient} client
+     * @param {Naeural} client
      * @param {string} node
      * @param {Object} config
      * @param {SchemasRepository} schemas
@@ -188,7 +188,7 @@ export class Pipeline {
     /**
      * Returns the NaeuralEdgeProtocol Network Client reference.
      *
-     * @return {ZxAIClient}
+     * @return {Naeural}
      */
     getClient() {
         return this.client;
@@ -290,7 +290,7 @@ export class Pipeline {
      * Returns the Edge Node command wrapping the Pipeline command.
      *
      * @param {Object} command
-     * @return {ZxAICommand}
+     * @return {NaeuralCommand}
      * @private
      */
     _getRawPipelineCommandPayload(command) {

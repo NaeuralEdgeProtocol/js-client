@@ -1,4 +1,4 @@
-import { ZxAIClient } from "../client";
+import { Naeural } from "../client";
 
 /**
  * @class Pipeline
@@ -13,14 +13,14 @@ export class Pipeline {
     /**
      * Static factory for constructing Pipeline models.
      *
-     * @param {ZxAIClient} client
+     * @param {Naeural} client
      * @param {string} node
      * @param {Object} config
      * @param {SchemasRepository} schemas
      * @param {boolean} dirty
      * @return {Pipeline}
      */
-    static make(client: ZxAIClient, node: string, config: any, schemas: SchemasRepository, dirty?: boolean): Pipeline;
+    static make(client: Naeural, node: string, config: any, schemas: SchemasRepository, dirty?: boolean): Pipeline;
     /**
      * The Pipeline model constructor.
      * @private
@@ -69,7 +69,7 @@ export class Pipeline {
     /**
      * The reference to the NaeuralEdgeProtocol Network Client.
      *
-     * @type {ZxAIClient}
+     * @type {Naeural}
      * @private
      */
     private client;
@@ -107,9 +107,9 @@ export class Pipeline {
     /**
      * Returns the NaeuralEdgeProtocol Network Client reference.
      *
-     * @return {ZxAIClient}
+     * @return {Naeural}
      */
-    getClient(): ZxAIClient;
+    getClient(): Naeural;
     /**
      * Returns the configured Data Capture Thread Model that feeds data into this pipeline.
      *

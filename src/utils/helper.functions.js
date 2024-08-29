@@ -3,6 +3,7 @@ import * as util from 'node:util';
 import { Buffer } from 'node:buffer';
 import { v4 as uuidv4 } from 'uuid';
 import { ALL_EDGE_NODES } from '../constants.js';
+
 /*
  * zLib deflate function wrapped as a promise.
  */
@@ -46,7 +47,7 @@ export const decode = (value) => {
  * @param {string} input
  * @return {string}
  */
-export const camelToZxAIFormat = (input) => {
+export const camelToNaeuralFormat = (input) => {
     return input.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase();
 };
 
@@ -57,12 +58,12 @@ export const camelToZxAIFormat = (input) => {
  * @param {Object} obj
  * @return {Object}
  */
-export const convertKeysToZxAIFormat = (obj) => {
+export const convertKeysToNaeuralFormat = (obj) => {
     const newObj = {};
 
     for (const key in obj) {
         if (Object.hasOwn(obj, key)) {
-            const snakeCaseKey = camelToZxAIFormat(key);
+            const snakeCaseKey = camelToNaeuralFormat(key);
             newObj[snakeCaseKey] = obj[key];
         }
     }
@@ -76,7 +77,7 @@ export const convertKeysToZxAIFormat = (obj) => {
  * @param {string} key
  * @return {string}
  */
-export const zxAIFormatToCamel = (key) => {
+export const naeuralFormatToCamel = (key) => {
     return key.toLowerCase().replace(/([-_][a-z])/gi, ($1) => {
         return $1.toUpperCase().replace('-', '').replace('_', '');
     });
@@ -94,7 +95,7 @@ export const convertKeysToCamelFormat = (obj) => {
 
     for (const key in obj) {
         if (Object.hasOwn(obj, key)) {
-            const camelCaseKey = zxAIFormatToCamel(key);
+            const camelCaseKey = naeuralFormatToCamel(key);
             newObj[camelCaseKey] = obj[key];
         }
     }

@@ -124,6 +124,7 @@ describe('InternalStateManager', () => {
                 EE_PAYLOAD_PATH: ['node1', null, null, null],
                 EE_TIMESTAMP: '2004-04-24T15:27:00Z',
                 EE_TIMEZONE: 'UTC',
+                EE_SENDER: '0xai_node1',
                 DATA: { pipelines: 'updatedData' },
             };
 
@@ -132,7 +133,7 @@ describe('InternalStateManager', () => {
 
             manager.nodeInfoUpdate(info);
 
-            expect(manager.state.hb['node1']).toEqual({
+            expect(manager.state.hb['0xai_node1']).toEqual({
                 lastUpdate: expect.any(Number),
                 nodeTime: { date: '2004-04-24T15:27:00Z', utc: 'UTC' },
                 data: { pipelines: 'updatedData' },
@@ -141,7 +142,7 @@ describe('InternalStateManager', () => {
             expect(mockPostMessage).toHaveBeenCalledTimes(3);
             expect(mockPostMessage).toHaveBeenCalledWith({
                 command: THREAD_COMMAND_UPDATE_STATE,
-                node: 'node1',
+                address: '0xai_node1',
                 state: 'updatedData',
             });
         });

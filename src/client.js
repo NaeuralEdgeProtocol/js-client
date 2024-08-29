@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {Object} ZxAIClientOptions
+ * @typedef {Object} NaeuralOptions
  * @property {any} emitterOptions - the EventEmitter2 setup
  * @property {any} initiator - The initiator of the configuration.
  * @property {Object} blockchain - Blockchain related configurations.
@@ -50,14 +50,14 @@ import { v4 as uuidv4 } from 'uuid';
 import * as mqtt from 'mqtt';
 import EventEmitter2 from 'eventemitter2';
 import {
-    ZxAI_BC_ADDRESS,
-    ZxAI_CLIENT_BOOTED,
-    ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE,
-    ZxAI_ENGINE_DEREGISTERED,
-    ZxAI_ENGINE_OFFLINE,
-    ZxAI_ENGINE_ONLINE,
-    ZxAI_ENGINE_REGISTERED,
-    ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE,
+    NAEURAL_BC_ADDRESS,
+    NAEURAL_CLIENT_BOOTED,
+    NAEURAL_CLIENT_SYS_TOPIC_SUBSCRIBE,
+    NAEURAL_ENGINE_DEREGISTERED,
+    NAEURAL_ENGINE_OFFLINE,
+    NAEURAL_ENGINE_ONLINE,
+    NAEURAL_ENGINE_REGISTERED,
+    NAEURAL_RECEIVED_HEARTBEAT_FROM_ENGINE,
     ALL_EDGE_NODES,
     INTERNAL_STATE_MANAGER,
     MESSAGE_TYPE_HEARTBEAT,
@@ -80,12 +80,12 @@ import {
     STICKY_COMMAND_ID_KEY,
     THREAD_COMMAND_MEMORY_USAGE,
     THREAD_COMMAND_START,
-    ZxAI_SUPERVISOR_PAYLOAD,
-    ZxAI_RECEIVED_HEARTBEAT_FROM_ADDRESS,
+    NAEURAL_SUPERVISOR_PAYLOAD,
+    NAEURAL_RECEIVED_HEARTBEAT_FROM_ADDRESS,
     MESSAGE_TYPE_THREAD_LOG,
     MESSAGE_TYPE_REFRESH_ADDRESSES,
 } from './constants.js';
-import { ZxAIBC } from './utils/blockchain.js';
+import { NaeuralBC } from './utils/blockchain.js';
 import { State } from './models/state.js';
 import { filter, fromEvent, map, merge } from 'rxjs';
 import { THREAD_START_ERR, THREAD_START_OK } from './threads/message.thread.js';
@@ -94,7 +94,7 @@ import { InternalStateManager } from './models/internal.state.manager.js';
 import { RedisStateManager } from './models/redis.state.manager.js';
 import { Logger } from './app.logger.js';
 import { NodeManager } from './node.manager.js';
-import {hasFleetFilter} from './utils/helper.functions.js';
+import { hasFleetFilter } from './utils/helper.functions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -106,7 +106,7 @@ export const NOTIFICATIONS_STREAM = 'notifications';
  * Enum NaeuralEdgeProtocol Event Stream Types
  * @enum {string}
  */
-export const ZxAIEventType = {
+export const NaeuralEventType = {
     PAYLOAD: PAYLOADS_STREAM,
     HEARTBEAT: HEARTBEATS_STREAM,
     NOTIFICATION: NOTIFICATIONS_STREAM,
@@ -115,20 +115,20 @@ export const ZxAIEventType = {
  * Enum NaeuralEdgeProtocol Client Events
  * @enum {string}
  */
-export const ZxAIClientEvent = {
-    ZxAI_CLIENT_CONNECTED: 'ZxAICCONNSUCCESS',
-    ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE: 'ZxAICSTS',
-    ZxAI_BC_ADDRESS: 'ZxAIBCADDR',
-    ZxAI_CLIENT_BOOTED: 'ZxAIBOOT',
-    ZxAI_ENGINE_REGISTERED: 'ZxAIEEREG',
-    ZxAI_ENGINE_DEREGISTERED: 'ZxAIEEDEREG',
-    ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE: 'ZxAICONEE',
-    ZxAI_CLIENT_SYS_TOPIC_UNSUBSCRIBE: 'ZxAICSTUS',
-    ZxAI_CLIENT_DISCONNECTED: 'ZxAICDISCONN',
-    ZxAI_CLIENT_CONNECTION_ERROR: 'ZxAICCONNERR',
-    ZxAI_CLIENT_SHUTDOWN: 'ZxAISHUTDOWN',
-    ZxAI_EXCEPTION: 'ZxAIEX',
-    ZxAI_ENGINE_OFFLINE: 'ZxAIEEOFF',
+export const NaeuralEvent = {
+    NAEURAL_CLIENT_CONNECTED: '0xai_CCONNSUCCESS',
+    NAEURAL_CLIENT_SYS_TOPIC_SUBSCRIBE: '0xai_CSTS',
+    NAEURAL_BC_ADDRESS: '0xai_BCADDR',
+    NAEURAL_CLIENT_BOOTED: '0xai_BOOT',
+    NAEURAL_ENGINE_REGISTERED: '0xai_EEREG',
+    NAEURAL_ENGINE_DEREGISTERED: '0xai_EEDEREG',
+    NAEURAL_RECEIVED_HEARTBEAT_FROM_ENGINE: '0xai_CONEE',
+    NAEURAL_CLIENT_SYS_TOPIC_UNSUBSCRIBE: '0xai_CSTUS',
+    NAEURAL_CLIENT_DISCONNECTED: '0xai_CDISCONN',
+    NAEURAL_CLIENT_CONNECTION_ERROR: '0xai_CCONNERR',
+    NAEURAL_CLIENT_SHUTDOWN: '0xai_SHUTDOWN',
+    NAEURAL_EXCEPTION: '0xai_EX',
+    NAEURAL_ENGINE_OFFLINE: '0xai_EEOFF',
 };
 
 /**
@@ -136,7 +136,7 @@ export const ZxAIClientEvent = {
  *
  * The main network client.
  */
-export class ZxAIClient extends EventEmitter2 {
+export class Naeural extends EventEmitter2 {
     /**
      * Dictionary describing the network topics to listen to.
      *
@@ -209,10 +209,10 @@ export class ZxAIClient extends EventEmitter2 {
     /**
      * Internal reference to the Blockchain Engine
      *
-     * @type {ZxAIBC}
+     * @type {NaeuralBC}
      * @private
      */
-    zxAIbc = null;
+    naeuralBC = null;
 
     /**
      * Internal dictionary keeping references to the streams of events received from the child threads.
@@ -299,7 +299,7 @@ export class ZxAIClient extends EventEmitter2 {
      * The network client constructor.
      *
      * @constructor
-     * @param {ZxAIClientOptions} options
+     * @param {NaeuralOptions} options
      * @param {*} logger
      */
     constructor(
@@ -387,7 +387,7 @@ export class ZxAIClient extends EventEmitter2 {
             );
         });
 
-        this.zxAIbc = new ZxAIBC(this.bootOptions.blockchain);
+        this.naeuralBC = new NaeuralBC(this.bootOptions.blockchain);
     }
 
     /**
@@ -415,7 +415,7 @@ export class ZxAIClient extends EventEmitter2 {
         thread['running'] = message.type === THREAD_START_OK;
         thread['status'] = message;
 
-        this.emit(ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE, null, {
+        this.emit(NAEURAL_CLIENT_SYS_TOPIC_SUBSCRIBE, null, {
             threadId: message.threadId,
             event: message.type,
             status: message.status,
@@ -428,13 +428,13 @@ export class ZxAIClient extends EventEmitter2 {
                 });
             }
 
-            this.emit(ZxAI_CLIENT_BOOTED, {
-                event: ZxAI_CLIENT_BOOTED,
+            this.emit(NAEURAL_CLIENT_BOOTED, {
+                event: NAEURAL_CLIENT_BOOTED,
                 status: true,
             });
 
-            this.emit(ZxAI_BC_ADDRESS, {
-                address: this.zxAIbc.getAddress(),
+            this.emit(NAEURAL_BC_ADDRESS, {
+                address: this.naeuralBC.getAddress(),
             });
         }
     }
@@ -455,7 +455,7 @@ export class ZxAIClient extends EventEmitter2 {
                     this._maybeCallInstanceCallback(message);
 
                     client.emit(
-                      ZxAI_SUPERVISOR_PAYLOAD,
+                      NAEURAL_SUPERVISOR_PAYLOAD,
                       null, // no error
                       message.data,
                       message.context,
@@ -536,7 +536,7 @@ export class ZxAIClient extends EventEmitter2 {
                                 (this.bootOptions.fleet.includes(state.getAddress(alertedNode.node)) ||
                                     this.bootOptions.fleet.includes(ALL_EDGE_NODES))
                             ) {
-                                client.emit(ZxAI_ENGINE_OFFLINE, {
+                                client.emit(NAEURAL_ENGINE_OFFLINE, {
                                     node: alertedNode.node,
                                     address: state.getAddress(alertedNode.node),
                                 });
@@ -554,7 +554,7 @@ export class ZxAIClient extends EventEmitter2 {
                                     this.bootOptions.fleet.includes(state.getAddress(nodeName)) ||
                                     this.bootOptions.fleet.includes(ALL_EDGE_NODES)
                                 ) {
-                                    client.emit(ZxAI_ENGINE_ONLINE, {
+                                    client.emit(NAEURAL_ENGINE_ONLINE, {
                                         node: nodeName,
                                         address: state.getAddress(nodeName),
                                     });
@@ -582,7 +582,7 @@ export class ZxAIClient extends EventEmitter2 {
                     break;
                 case MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD:
                     client.emit(
-                        ZxAI_SUPERVISOR_PAYLOAD,
+                        NAEURAL_SUPERVISOR_PAYLOAD,
                         null, // no error
                         message.data,
                         message.context,
@@ -591,10 +591,10 @@ export class ZxAIClient extends EventEmitter2 {
                 case MESSAGE_TYPE_HEARTBEAT:
                     if (message.error === null) {
                         state.nodeInfoUpdate(message.data);
-                        this.emit(ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE, {
+                        this.emit(NAEURAL_RECEIVED_HEARTBEAT_FROM_ENGINE, {
                             node: message.context?.node ?? null,
                         });
-                        this.emit(ZxAI_RECEIVED_HEARTBEAT_FROM_ADDRESS, {
+                        this.emit(NAEURAL_RECEIVED_HEARTBEAT_FROM_ADDRESS, {
                             address: message.context?.address ?? null,
                         });
                     }
@@ -637,7 +637,7 @@ export class ZxAIClient extends EventEmitter2 {
                     config: {
                         connection: { ...this.bootOptions.mqttOptions, suffix: `${threadType.substring(0, 1)}${index}`, topic: topic },
                         secure: true,
-                        zxaibc: this.bootOptions.blockchain,
+                        naeuralBC: this.bootOptions.blockchain,
                         stateManager: this.bootOptions.stateManager,
                         redis: this.bootOptions.redis,
                         fleet: hasFleetFilter(this.bootOptions.initialFleet) ? [ ] : [ ALL_EDGE_NODES ],
@@ -667,7 +667,7 @@ export class ZxAIClient extends EventEmitter2 {
             this.logger.warn('[Main Thread] Could not connect to MQTT.');
         });
 
-        this.logger.log(`[Main Thread] Blockchain Address: ${this.zxAIbc.getAddress()}`);
+        this.logger.log(`[Main Thread] Blockchain Address: ${this.naeuralBC.getAddress()}`);
 
         setInterval(() => {
             // eslint-disable-next-line no-undef
@@ -744,7 +744,7 @@ export class ZxAIClient extends EventEmitter2 {
     }
 
     loadIdentity(identityPrivateKey) {
-        return this.zxAIbc.loadIdentity(identityPrivateKey);
+        return this.naeuralBC.loadIdentity(identityPrivateKey);
     }
 
     /**
@@ -753,7 +753,7 @@ export class ZxAIClient extends EventEmitter2 {
      * @return {string} NaeuralEdgeProtocol Network address
      */
     getBlockChainAddress() {
-        return this.zxAIbc.getAddress();
+        return this.naeuralBC.getAddress();
     }
 
     // TODO: implement register message decoder
@@ -784,7 +784,7 @@ export class ZxAIClient extends EventEmitter2 {
             this.bootOptions.fleet = [...fleet, address];
             this.state.broadcastUpdateFleet({ node: address, action: 1, });
 
-            this.emit(ZxAI_ENGINE_REGISTERED, {
+            this.emit(NAEURAL_ENGINE_REGISTERED, {
                 executionEngine: this.state.getNodeForAddress(address),
                 node: this.state.getNodeForAddress(address),
                 address,
@@ -815,7 +815,7 @@ export class ZxAIClient extends EventEmitter2 {
             this.bootOptions.fleet = fleet.filter(item => item !== address);
             this.state.broadcastUpdateFleet({ node: address, action: -1 });
 
-            this.emit(ZxAI_ENGINE_DEREGISTERED, {
+            this.emit(NAEURAL_ENGINE_DEREGISTERED, {
                 executionEngine: this.state.getNodeForAddress(address),
                 node: this.state.getNodeForAddress(address),
                 address,
@@ -870,7 +870,7 @@ export class ZxAIClient extends EventEmitter2 {
      *
      * @param {string} name
      * @param {SchemaDefinition} schema
-     * @return {ZxAIClient}
+     * @return {Naeural}
      */
     registerDCTType(name, schema) {
         if (!this.schemas.dct) {
@@ -924,7 +924,7 @@ export class ZxAIClient extends EventEmitter2 {
      *
      * @param {string} signature
      * @param {Object} schema
-     * @return {ZxAIClient}
+     * @return {Naeural}
      */
     registerPluginSchema(signature, schema) {
         this.schemas.plugins[signature] = schema;
@@ -951,7 +951,7 @@ export class ZxAIClient extends EventEmitter2 {
      * @param {string} node
      * @param {PluginInstance|string} instance
      * @param callback
-     * @return {ZxAIClient}
+     * @return {Naeural}
      */
     setInstanceCallback(node, instance, callback) {
         const targetAddress = this.state.getAddress(node);
@@ -1087,7 +1087,7 @@ export class ZxAIClient extends EventEmitter2 {
         }
 
         const mqttConnection = this.mqttClient;
-        const blockchainEngine = this.zxAIbc;
+        const blockchainEngine = this.naeuralBC;
 
         return new Promise((resolve, reject) => {
             const request = this.state.registerMessage(message, watches, resolve, reject);

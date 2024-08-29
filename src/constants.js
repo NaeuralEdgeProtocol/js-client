@@ -1,8 +1,8 @@
 /**
- * @typedef {Object} ZxAICommand
+ * @typedef {Object} NaeuralCommand
  * @property {string} ACTION The action to be performed on the network node
- * @property {Object|string} PAYLOAD The payload for the forementioned `ACTION`
- * @property {string} [EE_ID] The node identificator to route the command to, is optional up until the actual publishing.
+ * @property {Object|string} PAYLOAD The payload for the aforementioned `ACTION`
+ * @property {string} [EE_ID] The node identification to route the command to, is optional up until the actual publishing.
  * @property {string} [EE_SENDER] The identity of the sender, is optional up until publishing
  * @property {string} [EE_HASH] The sha256 hash of the `ACTION` and `PAYLOAD`
  * @property {string} [EE_SIGN] The signature of the `EE_HASH` using the `EE_SENDER`'s identity
@@ -11,7 +11,7 @@
  */
 
 /**
- * @typedef {Object} ZxAIUpdateInstanceConfig
+ * @typedef {Object} NaeuralUpdateInstanceConfig
  * @property {string} NAME The pipeline id
  * @property {string} SIGNATURE The instance signature
  * @property {string} INSTANCE_ID The instance id
@@ -30,13 +30,9 @@ export const envelopeKeys = [
     'EE_MESSAGE_ID',
     'EE_MESSAGE_SEQ',
     'EE_TOTAL_MESSAGES',
-    // 'EE_FORMATTER',
     'EE_TIMESTAMP',
     'EE_TIMEZONE',
     'EE_TZ',
-    // 'EE_VERSION',
-    // 'INITIATOR_ID',
-    // 'SESSION_ID',
     'DATA',
 ];
 
@@ -96,22 +92,22 @@ export const NODE_COMMAND_UPDATE_CONFIG = 'UPDATE_CONFIG';
 export const NODE_COMMAND_UPDATE_PIPELINE_INSTANCE = 'UPDATE_PIPELINE_INSTANCE';
 
 // Network client events
-export const ZxAI_CLIENT_CONNECTED = 'ZxAICCONNSUCCESS';
-export const ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE = 'ZxAICSTS';
-export const ZxAI_BC_ADDRESS = 'ZxAIBCADDR';
-export const ZxAI_CLIENT_BOOTED = 'ZxAIBOOT';
-export const ZxAI_ENGINE_REGISTERED = 'ZxAIEEREG';
-export const ZxAI_ENGINE_DEREGISTERED = 'ZxAIEEDEREG';
-export const ZxAI_RECEIVED_HEARTBEAT_FROM_ENGINE = 'ZxAICONEE';
-export const ZxAI_RECEIVED_HEARTBEAT_FROM_ADDRESS = 'ZxAICONADDR';
-export const ZxAI_CLIENT_SYS_TOPIC_UNSUBSCRIBE = 'ZxAICSTUS';
-export const ZxAI_CLIENT_DISCONNECTED = 'ZxAICDISCONN';
-export const ZxAI_CLIENT_CONNECTION_ERROR = 'ZxAICCONNERR';
-export const ZxAI_CLIENT_SHUTDOWN = 'ZxAISHUTDOWN';
-export const ZxAI_EXCEPTION = 'ZxAIEX';
-export const ZxAI_ENGINE_OFFLINE = 'ZxAIEEOFF';
-export const ZxAI_ENGINE_ONLINE = 'ZxAIEEON';
-export const ZxAI_SUPERVISOR_PAYLOAD = 'ZxAISUPERPAY';
+export const NAEURAL_CLIENT_CONNECTED = '0xai_CCONNSUCCESS';
+export const NAEURAL_CLIENT_SYS_TOPIC_SUBSCRIBE = '0xai_CSTS';
+export const NAEURAL_BC_ADDRESS = '0xai_BCADDR';
+export const NAEURAL_CLIENT_BOOTED = '0xai_BOOT';
+export const NAEURAL_ENGINE_REGISTERED = '0xai_EEREG';
+export const NAEURAL_ENGINE_DEREGISTERED = '0xai_EEDEREG';
+export const NAEURAL_RECEIVED_HEARTBEAT_FROM_ENGINE = '0xai_CONEE';
+export const NAEURAL_RECEIVED_HEARTBEAT_FROM_ADDRESS = '0xai_CONADDR';
+export const NAEURAL_CLIENT_SYS_TOPIC_UNSUBSCRIBE = '0xai_CSTUS';
+export const NAEURAL_CLIENT_DISCONNECTED = '0xai_CDISCONN';
+export const NAEURAL_CLIENT_CONNECTION_ERROR = '0xai_CCONNERR';
+export const NAEURAL_CLIENT_SHUTDOWN = '0xai_SHUTDOWN';
+export const NAEURAL_EXCEPTION = '0xai_EX';
+export const NAEURAL_ENGINE_OFFLINE = '0xai_EEOFF';
+export const NAEURAL_ENGINE_ONLINE = '0xai_EEON';
+export const NAEURAL_SUPERVISOR_PAYLOAD = '0xai_SUPERPAY';
 
 // NOTIFICATION TYPES
 export const NOTIFICATION_TYPE_EXCEPTION = 'EXCEPTION';

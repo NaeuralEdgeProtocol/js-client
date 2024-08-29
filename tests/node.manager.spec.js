@@ -100,6 +100,7 @@ describe('Pipeline Model Tests', () => {
                 };
             },
             getNodeInfo: async () => mockNodeInfo,
+            getNodeForAddress: () => 'dummy-node',
         },
         publish: jest.fn(),
     };

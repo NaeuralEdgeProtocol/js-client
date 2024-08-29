@@ -34,10 +34,11 @@ import {
     MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
     MESSAGE_TYPE_THREAD_LOG, ADDRESSES_UPDATES_INBOX, MESSAGE_TYPE_REFRESH_ADDRESSES,
 } from '../constants.js';
-import { ZxAIBC } from '../utils/blockchain.js';
+import { NaeuralBC } from '../utils/blockchain.js';
 import {hasFleetFilter, isAddress} from '../utils/helper.functions.js';
 import EventEmitter2 from 'eventemitter2';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
+import {Naeural} from '../client.js';
 
 export const THREAD_START_OK = 'thread.start.ok';
 export const THREAD_START_ERR = 'thread.start.ok';
@@ -203,7 +204,7 @@ export class Thread extends EventEmitter2 {
             pubSubChannel: 'null',
         },
         secure: false,
-        zxaibc: {
+        naeuralBC: {
             debug: false,
             key: null,
             encrypt: true,
@@ -232,9 +233,9 @@ export class Thread extends EventEmitter2 {
     /**
      * The NaeuralEdgeProtocol Blockchain Engine
      *
-     * @type {ZxAIBC}
+     * @type {NaeuralBC}
      */
-    zxaibc = null;
+    naeuralBC = null;
 
     watchlist = {};
 
@@ -267,10 +268,10 @@ export class Thread extends EventEmitter2 {
         this.threadId = options.id;
         this.threadType = options.type;
         this.startupOptions = Object.assign(this.startupOptions, options.config);
-        this.zxaibc = new ZxAIBC(this.startupOptions.zxaibc);
+        this.naeuralBC = new NaeuralBC(this.startupOptions.naeuralBC);
 
-        this.encryptCommunication = this.startupOptions.zxaibc.encrypt || true;
-        this.secure = this.startupOptions.zxaibc.secure || true;
+        this.encryptCommunication = this.startupOptions.naeuralBC.encrypt || true;
+        this.secure = this.startupOptions.naeuralBC.secure || true;
 
         this.logger.log(
             `Starting new ${options.type} thread with ${this.startupOptions.stateManager} state manager...`,
@@ -716,8 +717,8 @@ export class Thread extends EventEmitter2 {
     }
 
     _messageIsSigned(message) {
-        let verify = this.zxaibc.verify(message);
-        if (!verify && this.startupOptions.zxaibc.debugMode) {
+        let verify = this.naeuralBC.verify(message);
+        if (!verify && this.startupOptions.naeuralBC.debugMode) {
             this.logger.debug('Unverifiable message', message);
         }
 
@@ -730,7 +731,7 @@ export class Thread extends EventEmitter2 {
         try {
             parsedMessage = JSON.parse(message);
             if (parsedMessage.EE_IS_ENCRYPTED !== undefined && parsedMessage.EE_IS_ENCRYPTED === true) {
-                const decrypted = this.zxaibc.decrypt(parsedMessage.EE_ENCRYPTED_DATA ?? null, parsedMessage.EE_SENDER);
+                const decrypted = this.naeuralBC.decrypt(parsedMessage.EE_ENCRYPTED_DATA ?? null, parsedMessage.EE_SENDER);
 
                 if (decrypted === null) {
                     return { EE_FORMATTER: 'ignore-this' };

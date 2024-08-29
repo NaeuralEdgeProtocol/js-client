@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import * as process from 'process';
 import fs from 'fs';
-import { ZxAIBC } from './utils/blockchain.js';
+import { NaeuralBC } from './utils/blockchain.js';
 
 const [, , ...args] = process.argv;
 
@@ -13,15 +13,15 @@ if (action !== 'generate') {
     process.exit(1);
 }
 
-const keyPair = ZxAIBC.generateKeys();
+const keyPair = NaeuralBC.generateKeys();
 const hexPair = {
     publicKey: keyPair.publicKey.export({ type: 'spki', format: 'der' }).toString('hex'),
     privateKey: keyPair.privateKey.export({ type: 'pkcs8', format: 'der' }).toString('hex'),
-    zxAIAddr: ZxAIBC.addressFromPublicKey(keyPair.publicKey),
+    naeuralAddr: NaeuralBC.addressFromPublicKey(keyPair.publicKey),
 };
 
 console.log('=-=-=-=-=-=-=-= NaeuralEdgeProtocol Blockchain Address Generator =-=-=-=-=-=-=-=');
-console.log(`   Your Address: ${hexPair.zxAIAddr}`);
+console.log(`   Your Address: ${hexPair.naeuralAddr}`);
 console.log('--------------------------------------------------------------------');
 console.log(`   Your Public Key: ${hexPair.publicKey}`);
 console.log(`   Your PRIVATE Key: ${hexPair.privateKey}`);

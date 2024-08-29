@@ -2,9 +2,9 @@ import { describe, expect, test, jest } from '@jest/globals';
 import {
     decode,
     encode,
-    camelToZxAIFormat,
-    convertKeysToZxAIFormat,
-    zxAIFormatToCamel,
+    camelToNaeuralFormat,
+    convertKeysToNaeuralFormat,
+    naeuralFormatToCamel,
     convertKeysToCamelFormat,
     base64ToUrlSafeBase64,
     urlSafeBase64ToBase64,
@@ -41,39 +41,39 @@ describe('Helper Function Tests', () => {
         });
     });
 
-    describe('camelToZxAIFormat() Tests', () => {
-        test('converts camelCase to ZXAI_FORMAT', () => {
+    describe('camelToNaeuralFormat() Tests', () => {
+        test('converts camelCase to NAEURAL_FORMAT', () => {
             const input = 'camelCaseExample';
             const expectedOutput = 'CAMEL_CASE_EXAMPLE';
-            expect(camelToZxAIFormat(input)).toBe(expectedOutput);
+            expect(camelToNaeuralFormat(input)).toBe(expectedOutput);
         });
 
         test('handles single-letter words', () => {
             const input = 'a';
             const expectedOutput = 'A';
-            expect(camelToZxAIFormat(input)).toBe(expectedOutput);
+            expect(camelToNaeuralFormat(input)).toBe(expectedOutput);
         });
 
         test('handles input with consecutive capital letters', () => {
-            const input = 'zxAI';
-            const expectedOutput = 'ZX_AI';
-            expect(camelToZxAIFormat(input)).toBe(expectedOutput);
+            const input = 'naeuralAI';
+            const expectedOutput = 'NAEURAL_AI';
+            expect(camelToNaeuralFormat(input)).toBe(expectedOutput);
         });
 
         test('handles input with consecutive small letters', () => {
             const input = 'NaeuralEdgeProtocol';
             const expectedOutput = 'NAEURAL_EDGE_PROTOCOL';
-            expect(camelToZxAIFormat(input)).toBe(expectedOutput);
+            expect(camelToNaeuralFormat(input)).toBe(expectedOutput);
         });
 
         test('handles input with numbers', () => {
             const input = 'zeroxai1point0';
             const expectedOutput = 'ZEROXAI1POINT0';
-            expect(camelToZxAIFormat(input)).toBe(expectedOutput);
+            expect(camelToNaeuralFormat(input)).toBe(expectedOutput);
         });
     });
 
-    describe('convertKeysToZxAIFormat() Tests', () => {
+    describe('convertKeysToNaeuralFormat() Tests', () => {
         test('converts keys in an object to AI_XP_FORMAT key names', () => {
             const input = {
                 camelCaseKey: 'value1',
@@ -85,13 +85,13 @@ describe('Helper Function Tests', () => {
                 ANOTHER_KEY: 'value2',
             };
 
-            expect(convertKeysToZxAIFormat(input)).toEqual(expectedOutput);
+            expect(convertKeysToNaeuralFormat(input)).toEqual(expectedOutput);
         });
 
         test('handles empty object', () => {
             const input = {};
             const expectedOutput = {};
-            expect(convertKeysToZxAIFormat(input)).toEqual(expectedOutput);
+            expect(convertKeysToNaeuralFormat(input)).toEqual(expectedOutput);
         });
 
         test('preserves values in the object', () => {
@@ -105,45 +105,45 @@ describe('Helper Function Tests', () => {
                 ANOTHER_KEY: 'value2',
             };
 
-            expect(convertKeysToZxAIFormat(input)).toEqual(expectedOutput);
+            expect(convertKeysToNaeuralFormat(input)).toEqual(expectedOutput);
         });
     });
 
-    describe('zxAIFormatToCamel() Tests', () => {
-        test('converts ZX_AI_FORMAT to camelCase', () => {
+    describe('naeuralFormatToCamel() Tests', () => {
+        test('converts NAEURAL_FORMAT to camelCase', () => {
             const input = 'CAMEL_CASE_EXAMPLE';
             const expectedOutput = 'camelCaseExample';
-            expect(zxAIFormatToCamel(input)).toBe(expectedOutput);
+            expect(naeuralFormatToCamel(input)).toBe(expectedOutput);
         });
 
         test('handles single-letter words', () => {
             const input = 'A';
             const expectedOutput = 'a';
-            expect(zxAIFormatToCamel(input)).toBe(expectedOutput);
+            expect(naeuralFormatToCamel(input)).toBe(expectedOutput);
         });
 
         test('handles input with consecutive capital letters', () => {
-            const input = 'ZXAI_FORMAT';
-            const expectedOutput = 'zxaiFormat';
-            expect(zxAIFormatToCamel(input)).toBe(expectedOutput);
+            const input = 'NAEURAL_FORMAT';
+            const expectedOutput = 'naeuralFormat';
+            expect(naeuralFormatToCamel(input)).toBe(expectedOutput);
         });
 
         test('handles input with numbers', () => {
             const input = 'VERSION2POINT0';
             const expectedOutput = 'version2point0';
-            expect(zxAIFormatToCamel(input)).toBe(expectedOutput);
+            expect(naeuralFormatToCamel(input)).toBe(expectedOutput);
         });
 
         test('handles input with dashes', () => {
             const input = 'DASHED-EXAMPLE';
             const expectedOutput = 'dashedExample';
-            expect(zxAIFormatToCamel(input)).toBe(expectedOutput);
+            expect(naeuralFormatToCamel(input)).toBe(expectedOutput);
         });
 
         test('handles input with underscores', () => {
             const input = 'UNDERSCORED_EXAMPLE';
             const expectedOutput = 'underscoredExample';
-            expect(zxAIFormatToCamel(input)).toBe(expectedOutput);
+            expect(naeuralFormatToCamel(input)).toBe(expectedOutput);
         });
     });
 

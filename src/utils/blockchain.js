@@ -12,7 +12,7 @@ const EE_SIGN = 'EE_SIGN';
 const EE_SENDER = 'EE_SENDER';
 const EE_HASH = 'EE_HASH';
 const ADDR_PREFIX = '0xai_';
-const ALLOWED_PREFIXES = ['0xai_', 'aixp_'];
+const ALLOWED_PREFIXES = ['0xai_'];
 const NON_DATA_FIELDS = [EE_SIGN, EE_SENDER, EE_HASH];
 
 const SPKI = asn1.define('SPKI', function () {
@@ -43,7 +43,7 @@ const PKCS8 = asn1.define('PKCS8', function () {
 
 
 /**
- * @typedef {Object} ZxAIBlockchainOptions
+ * @typedef {Object} NaeuralBlockchainOptions
  * @property {boolean} [debug] - Indicates if debugging is enabled.
  * @property {string} [key] - The key for the blockchain.
  * @property {boolean} [encrypt] - Indicates if encryption is enabled.
@@ -51,12 +51,12 @@ const PKCS8 = asn1.define('PKCS8', function () {
  */
 
 /**
- * @class ZxAIBC
+ * @class NaeuralBC
  *
  * This is the NaeuralEdgeProtocol Network Blockchain engine. Its purpose is to offer any integrator common features like
  * signature checking, message validation or key pair generation.
  */
-export class ZxAIBC {
+export class NaeuralBC {
     /**
      * The keypair that is in use.
      *
@@ -84,17 +84,17 @@ export class ZxAIBC {
     /**
      * NaeuralEdgeProtocol Network Blockchain engine constructor.
      *
-     * @param {ZxAIBlockchainOptions} options
+     * @param {NaeuralBlockchainOptions} options
      */
     constructor(options) {
         if (options.key) {
-            this.keyPair = ZxAIBC.deriveKeyPairFromDERHex(options.key);
+            this.keyPair = NaeuralBC.deriveKeyPairFromDERHex(options.key);
         } else {
-            this.keyPair = ZxAIBC.generateKeys();
+            this.keyPair = NaeuralBC.generateKeys();
         }
 
         this.debugMode = options.debug || false;
-        this.compressedPublicKey = ZxAIBC.compressPublicKeyObject(this.keyPair.publicKey);
+        this.compressedPublicKey = NaeuralBC.compressPublicKeyObject(this.keyPair.publicKey);
 
         if (this.debugMode) {
             console.log('NaeuralEdgeProtocol Blockchain address: ' + this.getAddress());
@@ -145,14 +145,14 @@ export class ZxAIBC {
     }
 
     static addressToECPublicKey(address) {
-        const pkB64 = ZxAIBC._removeAddressPrefix(address);
+        const pkB64 = NaeuralBC._removeAddressPrefix(address);
 
         return ec.keyFromPublic(Buffer.from(urlSafeBase64ToBase64(pkB64), 'base64').toString('hex'), 'hex');
     }
 
     static compressPublicKeyObject(publicKey) {
         const compressedPublicKeyB64 = Buffer.from(
-            ZxAIBC.publicKeyObjectToECKeyPair(publicKey).getPublic(true, 'hex'),
+            NaeuralBC.publicKeyObjectToECKeyPair(publicKey).getPublic(true, 'hex'),
             'hex',
         ).toString('base64');
 
@@ -160,11 +160,11 @@ export class ZxAIBC {
     }
 
     static addressFromPublicKey(publicKey) {
-        return ADDR_PREFIX + ZxAIBC.compressPublicKeyObject(publicKey);
+        return ADDR_PREFIX + NaeuralBC.compressPublicKeyObject(publicKey);
     }
 
     static addressToPublicKeyUncompressed(address) {
-        return ZxAIBC.addressToECPublicKey(address).getPublic(false, 'hex');
+        return NaeuralBC.addressToECPublicKey(address).getPublic(false, 'hex');
     }
 
     static addressToPublicKeyObject(address) {
@@ -227,15 +227,15 @@ export class ZxAIBC {
     static convertECKeyPairToPEM(keyPair) {
         const privateKeyHex = keyPair.getPrivate('hex');
         const publicKeyHex = keyPair.getPublic('hex').slice(2);
-        const pkcs8DER = ZxAIBC.convertEllipticPrivateKeyToPKCS8DER(privateKeyHex, publicKeyHex);
+        const pkcs8DER = NaeuralBC.convertEllipticPrivateKeyToPKCS8DER(privateKeyHex, publicKeyHex);
 
         return `-----BEGIN PRIVATE KEY-----\n${pkcs8DER.toString('base64').match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----\n`;
     }
 
     static loadFromSecretWords(words) {
-        const identity = ZxAIBC.generateIdentityFromSecretWords(words);
+        const identity = NaeuralBC.generateIdentityFromSecretWords(words);
 
-        return ZxAIBC.loadFromPem(ZxAIBC.convertECKeyPairToPEM(identity));
+        return NaeuralBC.loadFromPem(NaeuralBC.convertECKeyPairToPEM(identity));
     }
 
     static loadFromPem(pem) {
@@ -258,7 +258,7 @@ export class ZxAIBC {
             publicKey,
         }
 
-        this.compressedPublicKey = ZxAIBC.compressPublicKeyObject(this.keyPair.publicKey);
+        this.compressedPublicKey = NaeuralBC.compressPublicKeyObject(this.keyPair.publicKey);
 
         return true;
     }
@@ -318,7 +318,7 @@ export class ZxAIBC {
         }
 
         const signatureB64 = objReceived[EE_SIGN];
-        const pkB64 = objReceived[EE_SENDER] ? ZxAIBC._removeAddressPrefix(objReceived[EE_SENDER]) : null;
+        const pkB64 = objReceived[EE_SENDER] ? NaeuralBC._removeAddressPrefix(objReceived[EE_SENDER]) : null;
         const receivedHash = objReceived[EE_HASH];
         const objData = Object.fromEntries(
             Object.entries(objReceived).filter(([key]) => !NON_DATA_FIELDS.includes(key)),
@@ -345,10 +345,10 @@ export class ZxAIBC {
 
         if (pkB64) {
             const signatureBuffer = Buffer.from(urlSafeBase64ToBase64(signatureB64), 'base64');
-            const publicKeyObj = ZxAIBC.addressToPublicKeyObject(pkB64);
+            const publicKeyObj = NaeuralBC.addressToPublicKeyObject(pkB64);
 
 
-            const ecKeyPair = ZxAIBC.publicKeyObjectToECKeyPair(publicKeyObj);
+            const ecKeyPair = NaeuralBC.publicKeyObjectToECKeyPair(publicKeyObj);
             const rehash = Buffer.from(crypto.createHash('sha256').update(hash).digest('hex'), 'hex');
             const ver = ecKeyPair.verify([...rehash], [...signatureBuffer]); // Elliptic Curve verify
 
@@ -389,7 +389,7 @@ export class ZxAIBC {
     }
 
     encrypt(message, destinationAddress) {
-        const destinationPublicKey = ZxAIBC.addressToPublicKeyObject(destinationAddress);
+        const destinationPublicKey = NaeuralBC.addressToPublicKeyObject(destinationAddress);
         const sharedKey = this._deriveSharedKey(destinationPublicKey);
 
         const iv = crypto.randomBytes(12);
@@ -407,7 +407,7 @@ export class ZxAIBC {
             return null;
         }
 
-        const sourcePublicKey = ZxAIBC.addressToPublicKeyObject(sourceAddress);
+        const sourcePublicKey = NaeuralBC.addressToPublicKeyObject(sourceAddress);
         const encryptedData = Buffer.from(encryptedDataB64, 'base64');
 
         // Extract nonce and ciphertext
@@ -531,10 +531,10 @@ export class ZxAIBC {
      */
     _deriveSharedKey(peerPublicKey) {
         const ecdh = crypto.createECDH('secp256k1');
-        const privateKeyHex = ZxAIBC.privateKeyObjectToECKeyPair(this.keyPair.privateKey).getPrivate().toString(16);
+        const privateKeyHex = NaeuralBC.privateKeyObjectToECKeyPair(this.keyPair.privateKey).getPrivate().toString(16);
         ecdh.setPrivateKey(Buffer.from(privateKeyHex, 'hex'));
 
-        const publicKeyHex = ZxAIBC.publicKeyObjectToECKeyPair(peerPublicKey).getPublic('hex');
+        const publicKeyHex = NaeuralBC.publicKeyObjectToECKeyPair(peerPublicKey).getPublic('hex');
         const sharedSecret = ecdh.computeSecret(Buffer.from(publicKeyHex, 'hex'));
 
         const key = hkdf(sharedSecret, 32, {

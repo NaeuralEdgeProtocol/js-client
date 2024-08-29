@@ -1,9 +1,9 @@
 export * from './constants.js';
 export * from './client.js';
 export * from './utils/dcts/index.js';
-export { convertKeysToCamelFormat, convertKeysToZxAIFormat } from './utils/helper.functions.js';
+export { convertKeysToCamelFormat, convertKeysToNaeuralFormat } from './utils/helper.functions.js';
 export { NodeManager } from './node.manager.js';
-export { ZxAIBC } from './utils/blockchain.js';
+export { NaeuralBC } from './utils/blockchain.js';
 export { Pipeline } from './models/pipeline.js';
 export {
     ID_TAGS,

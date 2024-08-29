@@ -26,12 +26,12 @@ describe('State class tests', () => {
             registerThread: jest.fn(),
         };
 
-        state = new State(INTERNAL_STATE_MANAGER, mockManager, { fleet: ['node1', 'node2'] });
+        state = new State(INTERNAL_STATE_MANAGER, mockManager, { fleet: ['0xai_node1', '0xai_node2'] });
     });
 
     test('constructor() correctly assigned values', () => {
         expect(state.manager.name).toEqual('mock-manager');
-        expect(state.fleet).toEqual(['node1', 'node2']);
+        expect(state.fleet).toEqual(['0xai_node1', '0xai_node2']);
         expect(state.type).toEqual(INTERNAL_STATE_MANAGER);
     });
 
@@ -46,7 +46,7 @@ describe('State class tests', () => {
     });
 
     test('getNodeInfo() retrieves node info from the state manager', async () => {
-        const node = 'node1';
+        const node = '0xai_node1';
         const expectedNodeInfo = { id: node, online: true, lastSeen: new Date() };
         mockManager.getNodeInfo.mockResolvedValue(expectedNodeInfo);
 
@@ -58,7 +58,7 @@ describe('State class tests', () => {
 
     describe('getRunningPipelineConfig() Tests', () => {
         test('retrieves running pipeline config', async () => {
-            const node = 'node1';
+            const node = '0xai_node1';
             const pipelineId = 'pipeline1';
             const expectedConfig = { id: pipelineId, setting: 'value' };
             const mockNodeInfo = {
@@ -79,7 +79,7 @@ describe('State class tests', () => {
         });
 
         test('returns null if pipeline data is missing from the node info', async () => {
-            const node = 'node1';
+            const node = '0xai_node1';
             const pipelineId = 'pipeline1';
             mockManager.getNodeInfo.mockResolvedValue({ data: {} }); // No pipeline data
 
@@ -90,7 +90,7 @@ describe('State class tests', () => {
         });
 
         test('returns null if specified pipeline ID does not exist', async () => {
-            const node = 'node1';
+            const node = '0xai_node1';
             const pipelineId = 'nonexistentPipeline';
             const mockNodeInfo = {
                 data: {
@@ -112,7 +112,7 @@ describe('State class tests', () => {
 
     describe('getRunningInstanceConfig() Tests', () => {
         test('retrieves running instance config', async () => {
-            const node = 'node1';
+            const node = '0xai_node1';
             const pipelineId = 'pipeline1';
             const instanceId = 'instance1';
             const expectedConfig = { id: instanceId, setting: 'value' };
@@ -140,7 +140,7 @@ describe('State class tests', () => {
         });
 
         test('returns null if instance data is missing from the pipeline', async () => {
-            const node = 'node1';
+            const node = '0xai_node1';
             const pipelineId = 'pipeline1';
             const instanceId = 'instance1';
             const mockNodeInfo = {
@@ -161,7 +161,7 @@ describe('State class tests', () => {
         });
 
         test('returns null if specified instance ID does not exist within the pipeline', async () => {
-            const node = 'node1';
+            const node = '0xai_node1';
             const pipelineId = 'pipeline1';
             const instanceId = 'nonexistentInstance';
             const mockNodeInfo = {
@@ -184,7 +184,7 @@ describe('State class tests', () => {
         });
 
         test('returns null when the specified pipeline ID does not exist in the node info', async () => {
-            const node = 'node1';
+            const node = '0xai_node1';
             const pipelineId = 'nonexistentPipeline';
             const instanceId = 'instance1';
             const mockNodeInfo = {
@@ -212,23 +212,23 @@ describe('State class tests', () => {
     });
 
     test('markNodeAsSeen() marks a node as seen using the state manager', async () => {
-        const node = 'node1';
+        const node = '0xai_node1';
         const timestamp = Date.now();
         mockManager.markNodeAsSeen.mockResolvedValue(true);
 
-        const result = await state.markNodeAsSeen(node, timestamp);
+        const result = await state.markAsSeen(node, timestamp);
 
         expect(mockManager.markNodeAsSeen).toHaveBeenCalledWith(node, timestamp);
         expect(result).toBe(true);
     });
 
     test('broadcastUpdateFleet() updates fleet and broadcasts the update using the state manager', () => {
-        const fleetChange = { node: 'node3', action: 1 };
+        const fleetChange = { node: '0xai_node3', action: 1 };
         mockManager.broadcastUpdateFleet.mockImplementation(() => {});
 
         state.broadcastUpdateFleet(fleetChange);
 
-        expect(state.fleet).toEqual([ 'node1', 'node2', 'node3' ]);
+        expect(state.fleet).toEqual([ '0xai_node1', '0xai_node2', '0xai_node3' ]);
         expect(mockManager.broadcastUpdateFleet).toHaveBeenCalledWith(fleetChange);
     });
 
@@ -255,19 +255,19 @@ describe('State class tests', () => {
         test('returns blank status for all nodes not within fleet', async () => {
             const now = Date.now();
             const mockUniverse = {
-                node3: now - 500,
-                node4: now - (NODE_OFFLINE_CUTOFF_TIME * 1000 + 1),
+                '0xai_node3': now - 500,
+                '0xai_node4': now - (NODE_OFFLINE_CUTOFF_TIME * 1000 + 1),
             };
             mockManager.getUniverse.mockResolvedValue(mockUniverse);
 
-            const state = new State(INTERNAL_STATE_MANAGER, mockManager, { fleet: ['node3', 'node4', 'nodeX'] });
+            const state = new State(INTERNAL_STATE_MANAGER, mockManager, { fleet: ['0xai_node3', '0xai_node4', '0xai_nodeX'] });
 
             const fleetStatus = await state.getFleet();
 
             expect(fleetStatus).toEqual([
-                { name: 'node3', status: { online: true, lastSeen: new Date(mockUniverse['node3']) } },
-                { name: 'node4', status: { online: false, lastSeen: new Date(mockUniverse['node4']) } },
-                { name: 'nodeX', status: { online: false, lastSeen: null } },
+                { address: '0xai_node3', node: null, status: { online: true, lastSeen: new Date(mockUniverse['0xai_node3']) } },
+                { address: '0xai_node4', node: null, status: { online: false, lastSeen: new Date(mockUniverse['0xai_node4']) } },
+                { address: '0xai_nodeX', node: null, status: { online: false, lastSeen: null } },
             ]);
         });
 
@@ -284,8 +284,8 @@ describe('State class tests', () => {
             const fleetStatus = await state.getFleet();
 
             expect(fleetStatus).toEqual([
-                { name: 'node5', status: { online: true, lastSeen: new Date(mockUniverse['node5']) } },
-                { name: 'node6', status: { online: false, lastSeen: new Date(mockUniverse['node6']) } },
+                { address: 'node5', node: null, status: { online: true, lastSeen: new Date(mockUniverse['node5']) } },
+                { address: 'node6', node: null, status: { online: false, lastSeen: new Date(mockUniverse['node6']) } },
             ]);
         });
     });
@@ -298,10 +298,12 @@ describe('State class tests', () => {
                     node2: { online: false },
                 },
                 EE_ID: 'network1',
+                EE_SENDER: '0xai_network_super',
                 TIMESTAMP_EXECUTION: '2023-01-01T00:00:00Z',
             };
             const expectedUpdate = {
                 name: mockData.EE_ID,
+                address: '0xai_network_super',
                 status: mockData.CURRENT_NETWORK,
                 timestamp: mockData.TIMESTAMP_EXECUTION,
             };
@@ -310,7 +312,7 @@ describe('State class tests', () => {
 
             const result = await state.storeNetworkInfo(mockData);
 
-            expect(mockManager.updateNetworkSnapshot).toHaveBeenCalledWith(mockData.EE_ID, expectedUpdate);
+            expect(mockManager.updateNetworkSnapshot).toHaveBeenCalledWith(mockData.EE_SENDER, expectedUpdate);
             expect(result).toBe(true);
         });
 

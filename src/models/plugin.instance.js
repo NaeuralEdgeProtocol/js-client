@@ -536,7 +536,7 @@ export class PluginInstance {
      * Computes the instance update config by comparing the config running on the NaeuralEdgeProtocol Node with the proposed
      * configuration stored on the instance model.
      *
-     * @return {Promise<ZxAIUpdateInstanceConfig>}
+     * @return {Promise<NaeuralUpdateInstanceConfig>}
      */
     async makeUpdateInstancePayload() {
         const candidateConfig = this.compile();
@@ -601,7 +601,7 @@ export class PluginInstance {
      * Returns the instance command wrapped within an NaeuralEdgeProtocol Node command.
      *
      * @param command
-     * @return {ZxAICommand}
+     * @return {NaeuralCommand}
      */
     getRawInstanceCommandPayload(command) {
         command[STICKY_COMMAND_ID_KEY] = generateId();

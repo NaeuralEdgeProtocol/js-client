@@ -76,7 +76,7 @@ describe('RedisStateManager Tests', () => {
 
             expect(result).toEqual(mockUniverseData);
             expect(mockedRedisConnection.get).toHaveBeenCalledWith(
-                stateManagerModule.RedisStateManager.getRedisUniverseKeyAndLock()[0],
+                stateManagerModule.RedisStateManager._getRedisUniverseKeyAndLock()[0],
             );
         });
 
@@ -87,7 +87,7 @@ describe('RedisStateManager Tests', () => {
 
             expect(result).toEqual({});
             expect(mockedRedisConnection.get).toHaveBeenCalledWith(
-                stateManagerModule.RedisStateManager.getRedisUniverseKeyAndLock()[0],
+                stateManagerModule.RedisStateManager._getRedisUniverseKeyAndLock()[0],
             );
         });
     });
@@ -103,9 +103,10 @@ describe('RedisStateManager Tests', () => {
                 EE_PAYLOAD_PATH: path,
                 EE_TIMESTAMP: '2004-04-24T15:17:00Z',
                 EE_TIMEZONE: 'UTC',
+                EE_SENDER: '0xai_node1',
                 DATA: { pipelines: ['pipeline1'] },
             };
-            const key = stateManagerModule.RedisStateManager.getRedisHeartbeatKey(path[0]);
+            const key = stateManagerModule.RedisStateManager._getRedisHeartbeatKey(info.EE_SENDER);
 
             await redisStateManager.nodeInfoUpdate(info);
 
@@ -114,7 +115,7 @@ describe('RedisStateManager Tests', () => {
                 pubSubChannel,
                 JSON.stringify({
                     command: THREAD_COMMAND_UPDATE_STATE,
-                    node: path[0],
+                    address: info.EE_SENDER,
                     state: info.DATA.pipelines,
                 }),
             );
@@ -134,7 +135,7 @@ describe('RedisStateManager Tests', () => {
             redisStateManager._waitForLock.mockResolvedValue(true);
             mockedRedisConnection.get.mockResolvedValue(JSON.stringify({}));
             mockedRedisConnection.setnx.mockResolvedValue(1);
-            const [key] = stateManagerModule.RedisStateManager.getRedisUniverseKeyAndLock();
+            const [key] = stateManagerModule.RedisStateManager._getRedisUniverseKeyAndLock();
 
             const result = await redisStateManager.markNodeAsSeen(node, timestamp);
 
@@ -158,7 +159,7 @@ describe('RedisStateManager Tests', () => {
                 }),
             );
             mockedRedisConnection.set.mockResolvedValue('OK');
-            const [key] = stateManagerModule.RedisStateManager.getRedisUniverseKeyAndLock();
+            const [key] = stateManagerModule.RedisStateManager._getRedisUniverseKeyAndLock();
 
             const result = await redisStateManager.markNodeAsSeen(node, timestamp);
 
@@ -178,7 +179,7 @@ describe('RedisStateManager Tests', () => {
             redisStateManager._waitForLock.mockResolvedValue(true);
             mockedRedisConnection.get.mockResolvedValue(1234);
             mockedRedisConnection.set.mockResolvedValue('OK');
-            const [key] = stateManagerModule.RedisStateManager.getRedisUniverseKeyAndLock();
+            const [key] = stateManagerModule.RedisStateManager._getRedisUniverseKeyAndLock();
 
             const result = await redisStateManager.markNodeAsSeen(node, timestamp);
 
@@ -256,7 +257,7 @@ describe('RedisStateManager Tests', () => {
             console.error = jest.fn();
 
             supervisor = 'supervisor1';
-            [key, lock] = stateManagerModule.RedisStateManager.getSupervisorKeyAndLock(supervisor);
+            [key, lock] = stateManagerModule.RedisStateManager._getSupervisorKeyAndLock(supervisor);
             update = { nodes: ['node1', 'node2'] };
 
             redisStateManager._waitForLock = jest.fn().mockResolvedValue(true);
@@ -394,7 +395,7 @@ describe('RedisStateManager Tests', () => {
 
         test('successfully marks a new supervisor', async () => {
             mockedRedisConnection.get.mockResolvedValue(JSON.stringify([]));
-            const [key, lock] = stateManagerModule.RedisStateManager.getObservedSupervisorsKeyAndLock();
+            const [key, lock] = stateManagerModule.RedisStateManager._getObservedSupervisorsKeyAndLock();
 
             const result = await redisStateManager.markSupervisor(supervisor);
 
@@ -415,7 +416,7 @@ describe('RedisStateManager Tests', () => {
 
         test('does not mark an already listed supervisor', async () => {
             mockedRedisConnection.get.mockResolvedValue(JSON.stringify([supervisor]));
-            const [key, lock] = stateManagerModule.RedisStateManager.getObservedSupervisorsKeyAndLock();
+            const [key, lock] = stateManagerModule.RedisStateManager._getObservedSupervisorsKeyAndLock();
 
             const result = await redisStateManager.markSupervisor(supervisor);
 
@@ -435,7 +436,7 @@ describe('RedisStateManager Tests', () => {
 
         test('fails to mark supervisor if lock acquisition fails', async () => {
             redisStateManager._waitForLock.mockResolvedValue(false);
-            const [, lock] = stateManagerModule.RedisStateManager.getObservedSupervisorsKeyAndLock();
+            const [, lock] = stateManagerModule.RedisStateManager._getObservedSupervisorsKeyAndLock();
 
             const result = await redisStateManager.markSupervisor(supervisor);
 

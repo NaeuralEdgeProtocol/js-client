@@ -266,9 +266,9 @@ Cleans up the transaction handler related to the supplied `path`.
 Enum NaeuralEdgeProtocol Event Stream Types
 
 **Kind**: global enum  
-<a name="ZxAIClientEvent"></a>
+<a name="NaeuralEvent"></a>
 
-## ZxAIClientEvent : <code>enum</code>
+## NaeuralEvent : <code>enum</code>
 Enum NaeuralEdgeProtocol Client Events
 
 **Kind**: global enum  
@@ -615,9 +615,9 @@ BATCH_UPDATE_PIPELINE_INSTANCE network request.
 
 ## AlertedNodes : <code>Object.&lt;string, number&gt;</code>
 **Kind**: global typedef  
-<a name="ZxAIClientOptions"></a>
+<a name="NaeuralOptions"></a>
 
-## ZxAIClientOptions : <code>Object</code>
+## NaeuralOptions : <code>Object</code>
 **Kind**: global typedef  
 **Properties**
 

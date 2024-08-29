@@ -16,8 +16,8 @@ export namespace ZxAIEventType {
 /**
  * Enum NaeuralEdgeProtocol Client Events
  */
-export type ZxAIClientEvent = string;
-export namespace ZxAIClientEvent {
+export type NaeuralEvent = string;
+export namespace NaeuralEvent {
     let ZxAI_CLIENT_CONNECTED: string;
     let ZxAI_CLIENT_SYS_TOPIC_SUBSCRIBE: string;
     let ZxAI_BC_ADDRESS: string;
@@ -37,15 +37,15 @@ export namespace ZxAIClientEvent {
  *
  * The main network client.
  */
-export class ZxAIClient extends EventEmitter2 {
+export class Naeural extends EventEmitter2 {
     /**
      * The network client constructor.
      *
      * @constructor
-     * @param {ZxAIClientOptions} options
+     * @param {NaeuralOptions} options
      * @param {*} logger
      */
-    constructor(options?: ZxAIClientOptions, logger?: any);
+    constructor(options?: NaeuralOptions, logger?: any);
     /**
      * The boot options.
      *
@@ -146,9 +146,9 @@ export class ZxAIClient extends EventEmitter2 {
      *
      * @param {string} name
      * @param {SchemaDefinition} schema
-     * @return {ZxAIClient}
+     * @return {Naeural}
      */
-    registerDCTType(name: string, schema: SchemaDefinition): ZxAIClient;
+    registerDCTType(name: string, schema: SchemaDefinition): Naeural;
     /**
      * Returns the schema associated to a DCT name.
      *
@@ -174,9 +174,9 @@ export class ZxAIClient extends EventEmitter2 {
      *
      * @param {string} signature
      * @param {Object} schema
-     * @return {ZxAIClient}
+     * @return {Naeural}
      */
-    registerPluginSchema(signature: string, schema: any): ZxAIClient;
+    registerPluginSchema(signature: string, schema: any): Naeural;
     /**
      * Returns a specific stream of events in the network. It can offer a window inside all the messages published
      * in a specific message type category.
@@ -191,9 +191,9 @@ export class ZxAIClient extends EventEmitter2 {
      * @param {string} node
      * @param {PluginInstance|string} instance
      * @param callback
-     * @return {ZxAIClient}
+     * @return {Naeural}
      */
-    setInstanceCallback(node: string, instance: PluginInstance | string, callback: any): ZxAIClient;
+    setInstanceCallback(node: string, instance: PluginInstance | string, callback: any): Naeural;
     /**
      * Returns the client's observable universe: all the hosts that sent a heartbeat that are outside
      * this client's fleet.
