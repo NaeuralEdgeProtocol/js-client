@@ -156,7 +156,7 @@ export class Naeural extends EventEmitter2 {
      */
     bootOptions = {
         initiator: null,
-        topicRoot: 'lummetry',
+        topicRoot: 'naeural',
         blockchain: {
             debug: false,
             key: '',
