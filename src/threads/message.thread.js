@@ -801,7 +801,7 @@ export class Thread extends EventEmitter2 {
                             }
                         }
 
-                        if (decoded.DATA?.IS_ALERT === true && !!decoded.DATA?.CURRENT_ALERTED) {
+                        if (!!decoded.DATA?.CURRENT_ALERTED) {
                             // TODO: this should be indexed by node addresses as well
                             const alerted = Object.keys(decoded.DATA.CURRENT_ALERTED).map((nodeName) => ({
                                 node: nodeName,
