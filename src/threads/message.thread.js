@@ -38,7 +38,6 @@ import { NaeuralBC } from '../utils/blockchain.js';
 import {hasFleetFilter, isAddress} from '../utils/helper.functions.js';
 import EventEmitter2 from 'eventemitter2';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
-import {Naeural} from '../client.js';
 
 export const THREAD_START_OK = 'thread.start.ok';
 export const THREAD_START_ERR = 'thread.start.ok';
