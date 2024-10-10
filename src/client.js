@@ -94,7 +94,7 @@ import { InternalStateManager } from './models/internal.state.manager.js';
 import { RedisStateManager } from './models/redis.state.manager.js';
 import { Logger } from './app.logger.js';
 import { NodeManager } from './node.manager.js';
-import { hasFleetFilter } from './utils/helper.functions.js';
+import { hasFleetFilter, isAddress } from "./utils/helper.functions.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1023,7 +1023,13 @@ export class Naeural extends EventEmitter2 {
             });
         }
 
-        const receiver = this.state.getAddress(node);
+        let receiver = null;
+        if (isAddress(node)) {
+            receiver = node;
+        } else {
+            receiver = this.state.getAddress(node);
+        }
+
         if (!receiver) {
             throw 'RECEIVER NOT FOUND';
         }
