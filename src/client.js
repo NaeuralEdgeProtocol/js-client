@@ -25,6 +25,10 @@
  * @property {number} threads.heartbeats - The number of heartbeat threads.
  * @property {number} threads.notifications - The number of notification threads.
  * @property {number} threads.payloads - The number of payload processing threads.
+ * @property {Object} commsDiagnostics - Communications diagnostics configuration.
+ * @property {boolean} commsDiagnostics.enabled - Enables periodic comms diagnostics output.
+ * @property {number} commsDiagnostics.windowMs - Diagnostics aggregation window duration in milliseconds.
+ * @property {number} commsDiagnostics.netMonSampleRate - NET_MON trace sampling rate (worker-side).
  * @property {string[]} fleet - An array of fleet strings.
  */
 
@@ -330,6 +334,7 @@ export class Naeural extends EventEmitter2 {
             mqttOptions: undefined,
             customFormatters: undefined,
             threads: undefined,
+            commsDiagnostics: undefined,
             fleet: [],
         },
         logger = null,

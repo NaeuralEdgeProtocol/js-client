@@ -8,3 +8,5 @@ docs/jsdoc/@naeural/jsclient/*/scripts/
 .vscode/
 dist/
 node_modules/
+PROMPT.md
+

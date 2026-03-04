@@ -94,6 +94,8 @@ If relevant to the change:
 
 ## Version Bump Hygiene (Mandatory)
 
+For every codebase modification, the agent must increment `package.json` version by exactly one patch step (for example `3.1.8` -> `3.1.9`) in the same change set.
+
 For any change that modifies `"version"` in `package.json`, the agent must:
 
 - Verify `package-lock.json` top-level `version` and `packages[""].version` exactly match `package.json` `version`.

@@ -2,10 +2,24 @@
 
 ## [Unreleased] - 2026-03-04
 
+### Follow-Up Fixes (Comms Diagnostics Reliability)
+
+- Hardened `src/threads/message.thread.js::_onFunnelException()` to safely normalize and log non-Error thrown values (string/object/nullish) without allowing the logging path to throw.
+- Fixed buffer-stage NET_MON trace semantics so `_stageBufferToString()` reports `error` outcome when buffer decode fails (instead of incorrectly reporting `pass`).
+- Refined signature-gate exception accounting:
+  - insecure bypass on verification exception is now tracked as dedicated bypass accounting (`signatureBypassOnError`, `bypassReasons.signature_exception_insecure_bypass`)
+  - bypass case is no longer classified as a drop reason
+  - secure-mode signature exceptions remain explicit drop reasons.
+- Extended `types/client.d.ts` `NaeuralOptions` with `commsDiagnostics` (`enabled`, `windowMs`, `netMonSampleRate`) to match runtime option usage.
+- Added targeted tests in `tests/threads/message.thread.spec.js` and `tests/client.comms.spec.js` for non-Error funnel exceptions, buffer trace error outcome, signature exception bypass accounting, and commsDiagnostics option wiring.
+
 ### Version Bump Hygiene
 
 - Synced `package-lock.json` version fields with `package.json` (`3.1.8`) via `npm install --package-lock-only`.
 - Verified `npm pack --json` reports package version `3.1.8`.
+- Bumped package version from `3.1.8` to `3.1.9` for the latest changes (`npm version patch --no-git-tag-version`).
+- Verified `package-lock.json` top-level and `packages[""].version` are `3.1.9`.
+- Verified `npm pack --json` reports package version `3.1.9`.
 
 ### Added (Comms Diagnostics / NET_MON Investigation)
 

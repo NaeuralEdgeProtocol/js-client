@@ -107,4 +107,20 @@ describe('Main Thread Comms Setup', () => {
         expect(client.bootOptions.redis.pubSubChannel).toBe(`updates-${client.bootOptions.initiator}`);
         expect(client.bootOptions.redis.pubSubChannel).not.toBe('updates-null');
     });
+
+    test('commsDiagnostics options are accepted at client boot options level', () => {
+        const client = makeClient({
+            options: {
+                commsDiagnostics: {
+                    enabled: true,
+                    windowMs: 45_000,
+                    netMonSampleRate: 7,
+                },
+            },
+        });
+
+        expect(client.bootOptions.commsDiagnostics.enabled).toBe(true);
+        expect(client.bootOptions.commsDiagnostics.windowMs).toBe(45_000);
+        expect(client.bootOptions.commsDiagnostics.netMonSampleRate).toBe(7);
+    });
 });

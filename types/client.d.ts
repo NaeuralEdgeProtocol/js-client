@@ -391,6 +391,14 @@ export type NaeuralOptions = {
         payloads: number;
     };
     /**
+     * - Communications diagnostics configuration.
+     */
+    commsDiagnostics: {
+        enabled: boolean;
+        windowMs: number;
+        netMonSampleRate: number;
+    };
+    /**
      * - An array of fleet strings.
      */
     fleet: string[];

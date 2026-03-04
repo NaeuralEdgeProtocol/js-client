@@ -818,6 +818,7 @@ export class Thread extends EventEmitter2 {
             signaturePass: 0,
             signatureFail: 0,
             signatureError: 0,
+            signatureBypassOnError: 0,
             jsonParseOk: 0,
             jsonParseFail: 0,
             edgeNodePass: 0,
@@ -834,6 +835,7 @@ export class Thread extends EventEmitter2 {
             postedToMainByType: {},
             postedToRedisByType: {},
             dropReasons: {},
+            bypassReasons: {},
         };
     }
 
@@ -899,6 +901,17 @@ export class Thread extends EventEmitter2 {
             this.commsCounterWindow.dropReasons[reason] = 0;
         }
         this.commsCounterWindow.dropReasons[reason] += 1;
+    }
+
+    _registerBypassReason(reason) {
+        if (!this.commsDiagnostics.enabled || this.commsCounterWindow === null) {
+            return;
+        }
+
+        if (!Object.hasOwn(this.commsCounterWindow.bypassReasons, reason)) {
+            this.commsCounterWindow.bypassReasons[reason] = 0;
+        }
+        this.commsCounterWindow.bypassReasons[reason] += 1;
     }
 
     _normalizeFormatterKey(formatter) {
@@ -971,14 +984,80 @@ export class Thread extends EventEmitter2 {
         );
     }
 
+    _normalizeThrownError(error) {
+        if (error instanceof Error) {
+            return {
+                name: error.name || 'Error',
+                message: error.message || 'Unknown error',
+                stack: error.stack ?? null,
+                thrownType: 'Error',
+            };
+        }
+
+        if (typeof error === 'string') {
+            return {
+                name: 'NonErrorThrow',
+                message: error,
+                stack: null,
+                thrownType: 'string',
+            };
+        }
+
+        if (error === null || error === undefined) {
+            return {
+                name: 'NonErrorThrow',
+                message: 'Thrown value was nullish',
+                stack: null,
+                thrownType: String(error),
+            };
+        }
+
+        if (typeof error === 'object') {
+            let message = 'Non-error object thrown';
+            try {
+                message = typeof error.message === 'string' ? error.message : JSON.stringify(error);
+            } catch {
+                message = 'Non-serializable thrown object';
+            }
+
+            return {
+                name: typeof error.name === 'string' ? error.name : 'NonErrorThrow',
+                message,
+                stack: typeof error.stack === 'string' ? error.stack : null,
+                thrownType: 'object',
+            };
+        }
+
+        return {
+            name: 'NonErrorThrow',
+            message: String(error),
+            stack: null,
+            thrownType: typeof error,
+        };
+    }
+
     _onFunnelException(stage, error, envelope = null) {
-        this._incrementCommsCounter('funnelException');
-        const safe = envelope ? this._buildSafeTraceIdentifiers(envelope.message, envelope.rawMessage) : {};
-        this.logger.error(`${this._commsPrefix()} funnelException stage=${stage} message="${error.message}"`, {
-            seq: envelope?.seq ?? null,
-            ...safe,
-            stack: error.stack,
-        });
+        try {
+            const normalized = this._normalizeThrownError(error);
+            this._incrementCommsCounter('funnelException');
+            const safe = envelope ? this._buildSafeTraceIdentifiers(envelope.message, envelope.rawMessage) : {};
+            this.logger.error(`${this._commsPrefix()} funnelException stage=${stage} message="${normalized.message}"`, {
+                seq: envelope?.seq ?? null,
+                ...safe,
+                stack: normalized.stack,
+                thrownName: normalized.name,
+                thrownType: normalized.thrownType,
+            });
+        } catch (internalError) {
+            try {
+                const fallbackError = this._normalizeThrownError(internalError);
+                this.logger.error(
+                    `${this._commsPrefix()} funnelException stage=${stage} message="funnel-exception-logger-failed: ${fallbackError.message}"`,
+                );
+            } catch {
+                // Ensure diagnostics never throw from logging path.
+            }
+        }
     }
 
     _createFunnelEnvelope(message) {
@@ -995,10 +1074,13 @@ export class Thread extends EventEmitter2 {
     }
 
     _stageBufferToString(envelope) {
+        let bufferError = false;
+
         try {
             envelope.rawMessage = this._bufferToString(envelope.mqttMessage);
             this._incrementCommsCounter('bufferToStringOk');
         } catch (error) {
+            bufferError = true;
             envelope.rawMessage = '{ EE_FORMATTER: \'ignore-this\'}';
             this._incrementCommsCounter('bufferToStringError');
             this._registerDropReason('buffer_to_string_error');
@@ -1007,7 +1089,12 @@ export class Thread extends EventEmitter2 {
 
         envelope.netMonCandidate = this._isNetMonRawCandidate(envelope.rawMessage);
         this._markNetMonSampling(envelope);
-        this._traceNetMonStage(envelope, 'buffer_to_string', 'pass');
+        this._traceNetMonStage(
+            envelope,
+            'buffer_to_string',
+            bufferError ? 'error' : 'pass',
+            bufferError ? { reason: 'buffer_to_string_error' } : {},
+        );
 
         return envelope;
     }
@@ -1028,11 +1115,15 @@ export class Thread extends EventEmitter2 {
         } catch (error) {
             const bypassed = !this.secure;
             this._incrementCommsCounter('signatureError');
-            this._registerDropReason('signature_exception');
             if (bypassed) {
+                this._incrementCommsCounter('signatureBypassOnError');
                 this._incrementCommsCounter('signaturePass');
-                this._traceNetMonStage(envelope, 'signature_gate', 'bypass_on_error');
+                this._registerBypassReason('signature_exception_insecure_bypass');
+                this._traceNetMonStage(envelope, 'signature_gate', 'bypass_on_error', {
+                    reason: 'signature_exception_insecure_bypass',
+                });
             } else {
+                this._registerDropReason('signature_exception');
                 this._traceNetMonStage(envelope, 'signature_gate', 'error', {
                     reason: 'signature_exception',
                 });

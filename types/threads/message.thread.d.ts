@@ -126,6 +126,7 @@ export class Thread extends EventEmitter2 {
         signaturePass: number;
         signatureFail: number;
         signatureError: number;
+        signatureBypassOnError: number;
         jsonParseOk: number;
         jsonParseFail: number;
         edgeNodePass: number;
@@ -142,6 +143,7 @@ export class Thread extends EventEmitter2 {
         postedToMainByType: {};
         postedToRedisByType: {};
         dropReasons: {};
+        bypassReasons: {};
     };
     _resetCommsDiagnosticsWindow(): void;
     _scheduleCommsDiagnosticsWindow(): void;
@@ -149,6 +151,7 @@ export class Thread extends EventEmitter2 {
     _incrementCommsCounter(counter: any, amount?: number): void;
     _incrementCommsTypeCounter(bucket: any, type: any): void;
     _registerDropReason(reason: any): void;
+    _registerBypassReason(reason: any): void;
     _normalizeFormatterKey(formatter: any): string;
     _buildSafeTraceIdentifiers(message: any, rawMessage?: any): {
         sender: any;
@@ -161,6 +164,12 @@ export class Thread extends EventEmitter2 {
     _isNetMonMessage(message: any): boolean;
     _markNetMonSampling(envelope: any): void;
     _traceNetMonStage(envelope: any, stage: any, outcome: any, extra?: {}): void;
+    _normalizeThrownError(error: any): {
+        name: any;
+        message: string;
+        stack: any;
+        thrownType: string;
+    };
     _onFunnelException(stage: any, error: any, envelope?: any): void;
     _createFunnelEnvelope(message: any): {
         seq: number;

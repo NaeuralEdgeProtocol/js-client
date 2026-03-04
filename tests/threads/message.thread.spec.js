@@ -173,4 +173,61 @@ describe('Message Thread Comms Diagnostics', () => {
 
         expect(thread.commsCounterWindow.formatPass).toBe(2);
     });
+
+    test('_onFunnelException safely handles non-Error thrown values', () => {
+        const { thread, logger } = makeThread();
+        trackedThreads.push(thread);
+
+        expect(() => thread._onFunnelException('stage-string', 'boom-string')).not.toThrow();
+        expect(() => thread._onFunnelException('stage-object', { bad: 'payload' })).not.toThrow();
+        expect(() => thread._onFunnelException('stage-null', null)).not.toThrow();
+
+        expect(thread.commsCounterWindow.funnelException).toBe(3);
+        expect(logger.error).toHaveBeenCalledTimes(3);
+    });
+
+    test('_stageBufferToString marks NET_MON trace outcome as error on decode failure', () => {
+        const { thread } = makeThread();
+        trackedThreads.push(thread);
+        const traceSpy = jest.spyOn(thread, '_traceNetMonStage');
+
+        const envelope = thread._createFunnelEnvelope([null, null, { payload: null }]);
+        thread._stageBufferToString(envelope);
+
+        expect(thread.commsCounterWindow.bufferToStringError).toBe(1);
+        expect(thread.commsCounterWindow.dropReasons.buffer_to_string_error).toBe(1);
+        expect(traceSpy).toHaveBeenCalledWith(
+            expect.any(Object),
+            'buffer_to_string',
+            'error',
+            { reason: 'buffer_to_string_error' },
+        );
+    });
+
+    test('signature exception with secure=false bypasses without drop classification', () => {
+        const { thread } = makeThread({
+            config: {
+                naeuralBC: {
+                    debug: false,
+                    secure: false,
+                    encrypt: false,
+                    key: null,
+                },
+            },
+        });
+        trackedThreads.push(thread);
+
+        thread.naeuralBC.verify = jest.fn(() => {
+            throw 'verification exploded';
+        });
+
+        const envelope = thread._createFunnelEnvelope([null, null, { payload: Buffer.from('anything') }]);
+        thread._stageBufferToString(envelope);
+
+        expect(thread._stageSignatureGate(envelope)).toBe(true);
+        expect(thread.commsCounterWindow.signatureError).toBe(1);
+        expect(thread.commsCounterWindow.signatureBypassOnError).toBe(1);
+        expect(thread.commsCounterWindow.bypassReasons.signature_exception_insecure_bypass).toBe(1);
+        expect(thread.commsCounterWindow.dropReasons.signature_exception).toBeUndefined();
+    });
 });
