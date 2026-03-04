@@ -82,9 +82,9 @@ export class RedisStateManager extends EventEmitter2 {
         super();
         const inboxId = generateId();
         this.pubSubChannel = redisOptions.pubSubChannel;
-        this.cache = getRedisConnection(redisOptions);
-        this.subscriptionChannel = getRedisConnection(redisOptions);
-        this.publishChannel = getRedisConnection(redisOptions);
+        this.cache = getRedisConnection(redisOptions, logger, 'Redis state cache');
+        this.subscriptionChannel = getRedisConnection(redisOptions, logger, 'Redis state subscriber');
+        this.publishChannel = getRedisConnection(redisOptions, logger, 'Redis state publisher');
         this.inboxId = inboxId;
         this.logger = logger;
 
@@ -413,14 +413,9 @@ export class RedisStateManager extends EventEmitter2 {
      * @private
      */
     async _acquireLock(lock) {
-        const result = await this.cache.setnx(lock, true);
-        if (result === 1) {
-            await this.cache.expire(lock, REDIS_LOCK_EXPIRATION_TIME);
+        const result = await this.cache.set(lock, 'true','EX', REDIS_LOCK_EXPIRATION_TIME, 'NX');
 
-            return true;
-        }
-
-        return false;
+        return result === 'OK';
     }
 
     /**

@@ -280,9 +280,9 @@ export class Thread extends EventEmitter2 {
             this.logger.log('... configuring Redis state manager');
 
             this.pubSubChannel = this.startupOptions.redis.pubSubChannel;
-            this.cache = getRedisConnection(redisOptions);
-            this.publishChannel = getRedisConnection(redisOptions);
-            this.subscriptionChannel = getRedisConnection(redisOptions);
+            this.cache = getRedisConnection(redisOptions, this.logger, `Redis cache [Thread ${this.threadId}]`);
+            this.publishChannel = getRedisConnection(redisOptions, this.logger, `Redis publisher [Thread ${this.threadId}]`);
+            this.subscriptionChannel = getRedisConnection(redisOptions, this.logger, `Redis subscriber [Thread ${this.threadId}]`);
         }
 
         const formatters = this.formatters;
@@ -340,8 +340,29 @@ export class Thread extends EventEmitter2 {
             });
         });
 
-        // TODO: onError => communications error => should gracefully stop thread
-        this.mqttClient.on('error', this._onError);
+        this.mqttClient.on('error', (err) => {
+            this.logger.error(`MQTT client on thread ${this.threadId} error:`, err);
+        });
+
+        this.mqttClient.on('disconnect', () => {
+            this.logger.error(`MQTT client on thread ${this.threadId} disconnected`);
+        });
+
+        this.mqttClient.on('offline', () => {
+            this.logger.error(`MQTT client on thread ${this.threadId}  is offline`);
+        });
+
+        this.mqttClient.on('reconnect', () => {
+            this.logger.warn(`MQTT client on thread ${this.threadId} attempting to reconnect...`);
+        });
+
+        this.mqttClient.on('close', () => {
+            this.logger.warn(`MQTT client on thread ${this.threadId} connection closed`);
+        });
+
+        this.mqttClient.on('end', () => {
+            this.logger.warn(`MQTT client on thread ${this.threadId} connection ended`);
+        });
 
         if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
             markBootUpdate('redis.subscriptionChannel', !!this.subscriptionChannel, this.threadId, this.threadType);
@@ -759,6 +780,8 @@ export class Thread extends EventEmitter2 {
             this.threadType === THREAD_TYPE_PAYLOADS &&
             message.EE_PAYLOAD_PATH[1]?.toLowerCase() === 'admin_pipeline'
         ) {
+            this.logger.log(`Processing supervisor payload from ${message.EE_PAYLOAD_PATH[0]}:${message.EE_PAYLOAD_PATH[2]}`);
+
             const duplicate = { ...message };
             if (this._messageHasKnownFormat(duplicate)) {
                 this._decodeToInternalFormat(duplicate).then((decoded) => {

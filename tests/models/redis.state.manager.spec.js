@@ -469,26 +469,23 @@ describe('RedisStateManager Tests', () => {
 
     describe('aquireLock() Tests', () => {
         test('should successfully acquire a lock and set expiration', async () => {
-            mockedRedisConnection.setnx.mockResolvedValue(1);
-            mockedRedisConnection.expire.mockResolvedValue(1);
+            mockedRedisConnection.set.mockResolvedValue('OK');
 
             const lockKey = 'testLock';
             const result = await redisStateManager._acquireLock(lockKey);
 
             expect(result).toBe(true);
-            expect(mockedRedisConnection.setnx).toHaveBeenCalledWith(lockKey, true);
-            expect(mockedRedisConnection.expire).toHaveBeenCalledWith(lockKey, REDIS_LOCK_EXPIRATION_TIME);
+            expect(mockedRedisConnection.set).toHaveBeenCalledWith(lockKey, 'true','EX', REDIS_LOCK_EXPIRATION_TIME, 'NX');
         });
 
         test('should fail to acquire a lock if it already exists', async () => {
-            mockedRedisConnection.setnx.mockResolvedValue(0);
+            mockedRedisConnection.set.mockResolvedValue(false);
 
             const lockKey = 'testLock';
             const result = await redisStateManager._acquireLock(lockKey);
 
             expect(result).toBe(false);
-            expect(mockedRedisConnection.setnx).toHaveBeenCalledWith(lockKey, true);
-            expect(mockedRedisConnection.expire).not.toHaveBeenCalled();
+            expect(mockedRedisConnection.set).toHaveBeenCalledWith(lockKey, 'true','EX', REDIS_LOCK_EXPIRATION_TIME, 'NX');
         });
     });
 

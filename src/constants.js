@@ -65,7 +65,7 @@ export const MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD = 'network.supervisor.paylo
 export const MESSAGE_TYPE_THREAD_LOG = 'thread.logger';
 export const MESSAGE_TYPE_REFRESH_ADDRESSES = 'refresh-addresses';
 
-export const REDIS_LOCK_EXPIRATION_TIME = 100;
+export const REDIS_LOCK_EXPIRATION_TIME = 60;
 export const REDIS_LOCK_MAX_RETRIES = 10;
 export const REDIS_LOCK_RETRY_INTERVAL = 100;
 
