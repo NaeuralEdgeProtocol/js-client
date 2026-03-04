@@ -28,10 +28,12 @@ const encoded =
 
 describe('Helper Function Tests', () => {
     describe('PseudoPy Helpers Tests', () => {
-        test('encode()', () => {
-            return encode(pseudopy).then((result) => {
-                expect(result).toBe(encoded);
-            });
+        test('encode()', async () => {
+            const result = await encode(pseudopy);
+
+            expect(typeof result).toBe('string');
+            expect(result).toMatch(/^[A-Za-z0-9+/]+=*$/);
+            await expect(decode(result)).resolves.toBe(pseudopy);
         });
 
         test('decode()', () => {

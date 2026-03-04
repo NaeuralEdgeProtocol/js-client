@@ -23,6 +23,11 @@
 - Replaced placeholder `README.md` with an end-to-end, implementation-consistent guide.
 - README now covers project purpose/architecture, runtime requirements, configuration, quick start, streams/events, `NodeManager` workflow, schema extensibility, blockchain identity/CLI usage, development commands, and CI/release behavior.
 
+### Test Stability Fix
+
+- Updated `tests/utils/helper.functions.spec.js` to validate encode/decode semantic correctness (`decode(encode(x)) === x`) instead of asserting one zlib-version-specific compressed base64 string.
+- This resolves the CI failure in `Helper Function Tests -> PseudoPy Helpers Tests -> encode()` across different Node/zlib environments.
+
 ### Current Modified/Added Files Covered By This Entry
 
 - Modified: `README.md`.
@@ -42,6 +47,5 @@
 - `.github/workflows/release.yml` creates GitHub releases but does not publish to npm.
 - Release workflow assumes tags exist and may fail on repos with no prior tags.
 - `src/client.js` initializes `redis.pubSubChannel` before fallback `initiator` generation, allowing `updates-null`.
-- `tests/utils/helper.functions.spec.js` has a Node-version-sensitive compression snapshot assertion.
 - ESLint currently reports multiple errors in `src/` and `tests/`.
 - `npm audit --omit=dev` reported production dependency vulnerabilities requiring updates and verification.
