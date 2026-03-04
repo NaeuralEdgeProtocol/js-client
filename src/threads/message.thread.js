@@ -316,6 +316,9 @@ export class Thread extends EventEmitter2 {
             : NETMON_TRACE_SAMPLE_RATE;
         this._resetCommsDiagnosticsWindow();
         this._scheduleCommsDiagnosticsWindow();
+        this.logger.log(
+            `${this._commsPrefix()} startup secure=${this.secure} signatureDebugEnabled=${this.signatureDebugEnabled} commsDiagnostics.enabled=${this.commsDiagnostics.enabled} windowMs=${this.commsDiagnostics.windowMs} netMonSampleRate=${this.commsDiagnostics.netMonSampleRate}`,
+        );
 
         this.logger.log(
             `Starting new ${options.type} thread with ${this.startupOptions.stateManager} state manager...`,
@@ -831,6 +834,17 @@ export class Thread extends EventEmitter2 {
             decodeError: 0,
             supervisorAdminSeen: 0,
             supervisorNetMonSeen: 0,
+            netMonCandidateSeen: 0,
+            netMonDropSignature: 0,
+            netMonDropParse: 0,
+            netMonDropFleet: 0,
+            netMonDropFormatter: 0,
+            netMonDropDecode: 0,
+            netMonDecodePass: 0,
+            netMonSupervisorSeen: 0,
+            netMonCurrentNetworkMissing: 0,
+            netMonCurrentNetworkMalformed: 0,
+            netMonSignaturePathMismatch: 0,
             funnelException: 0,
             postedToMainByType: {},
             postedToRedisByType: {},
@@ -962,6 +976,7 @@ export class Thread extends EventEmitter2 {
             return;
         }
 
+        this._incrementCommsCounter('netMonCandidateSeen');
         this.netMonSeen += 1;
         envelope.netMonSamplingMarked = true;
         envelope.traceNetMon = this.netMonSeen % this.commsDiagnostics.netMonSampleRate === 0;
@@ -1109,6 +1124,9 @@ export class Thread extends EventEmitter2 {
             }
 
             this._incrementCommsCounter('signatureFail');
+            if (envelope.netMonCandidate) {
+                this._incrementCommsCounter('netMonDropSignature');
+            }
             this._registerDropReason('signature_invalid');
             this._traceNetMonStage(envelope, 'signature_gate', 'drop', { reason: 'signature_invalid' });
             return false;
@@ -1123,6 +1141,9 @@ export class Thread extends EventEmitter2 {
                     reason: 'signature_exception_insecure_bypass',
                 });
             } else {
+                if (envelope.netMonCandidate) {
+                    this._incrementCommsCounter('netMonDropSignature');
+                }
                 this._registerDropReason('signature_exception');
                 this._traceNetMonStage(envelope, 'signature_gate', 'error', {
                     reason: 'signature_exception',
@@ -1147,6 +1168,9 @@ export class Thread extends EventEmitter2 {
         } catch (error) {
             envelope.message = null;
             this._incrementCommsCounter('jsonParseFail');
+            if (envelope.netMonCandidate) {
+                this._incrementCommsCounter('netMonDropParse');
+            }
             this._registerDropReason('parse_error');
             this._traceNetMonStage(envelope, 'json_parse', 'drop', { reason: 'parse_error' });
         }
@@ -1177,6 +1201,9 @@ export class Thread extends EventEmitter2 {
         }
 
         this._incrementCommsCounter('fleetDrop');
+        if (envelope.netMonCandidate) {
+            this._incrementCommsCounter('netMonDropFleet');
+        }
         this._registerDropReason('fleet_filtered');
         this._traceNetMonStage(envelope, 'fleet_gate', 'drop', { reason: 'fleet_filtered' });
         return false;
@@ -1191,6 +1218,9 @@ export class Thread extends EventEmitter2 {
         }
 
         this._incrementCommsCounter('formatDrop');
+        if (envelope.netMonCandidate) {
+            this._incrementCommsCounter('netMonDropFormatter');
+        }
         this._registerDropReason('unknown_formatter');
         this._traceNetMonStage(envelope, 'formatter_gate', 'drop', { reason: 'unknown_formatter' });
         return false;
@@ -1200,10 +1230,16 @@ export class Thread extends EventEmitter2 {
         try {
             envelope.message = await this._decodeToInternalFormat(envelope.message);
             this._incrementCommsCounter('decodeOk');
+            if (envelope.netMonCandidate) {
+                this._incrementCommsCounter('netMonDecodePass');
+            }
             this._traceNetMonStage(envelope, 'decode', 'pass');
             return envelope;
         } catch (error) {
             this._incrementCommsCounter('decodeError');
+            if (envelope.netMonCandidate) {
+                this._incrementCommsCounter('netMonDropDecode');
+            }
             this._registerDropReason('decode_exception');
             this._traceNetMonStage(envelope, 'decode', 'drop', { reason: 'decode_exception' });
             this._onFunnelException('decode', error, envelope);
@@ -1271,6 +1307,7 @@ export class Thread extends EventEmitter2 {
             return;
         }
 
+        const isNetMonCandidate = this._isNetMonMessage(message) || envelope?.netMonCandidate === true;
         this._incrementCommsCounter('supervisorAdminSeen');
         this.logger.log(`Processing supervisor payload from ${message.EE_PAYLOAD_PATH[0]}:${message.EE_PAYLOAD_PATH[2]}`);
 
@@ -1283,9 +1320,49 @@ export class Thread extends EventEmitter2 {
             .then((decoded) => {
                 if (decoded.EE_PAYLOAD_PATH[2]?.toLowerCase() === NETMON_SIGNATURE.toLowerCase()) {
                     this._incrementCommsCounter('supervisorNetMonSeen');
+                    this._incrementCommsCounter('netMonSupervisorSeen');
                     this._traceNetMonStage(envelope ?? { traceNetMon: false }, 'supervisor_side_path', 'seen');
                     const addressToNode = {};
                     const nodeToAddress = {};
+
+                    const currentNetwork = decoded.DATA?.CURRENT_NETWORK;
+                    if (currentNetwork === undefined) {
+                        this._incrementCommsCounter('netMonCurrentNetworkMissing');
+                        this.logger.warn(
+                            `${this._commsPrefix()} netmonSupervisor CURRENT_NETWORK missing`,
+                            this._buildSafeTraceIdentifiers(decoded),
+                        );
+                    } else if (typeof currentNetwork !== 'object' || currentNetwork === null || Array.isArray(currentNetwork)) {
+                        this._incrementCommsCounter('netMonCurrentNetworkMalformed');
+                        this.logger.warn(
+                            `${this._commsPrefix()} netmonSupervisor CURRENT_NETWORK malformed`,
+                            {
+                                ...this._buildSafeTraceIdentifiers(decoded),
+                                currentNetworkType: Array.isArray(currentNetwork) ? 'array' : typeof currentNetwork,
+                            },
+                        );
+                    }
+
+                    const payloadPathSignature = Array.isArray(decoded.EE_PAYLOAD_PATH) ? decoded.EE_PAYLOAD_PATH[2] : null;
+                    const dataSignature = decoded.DATA?.SIGNATURE;
+                    const normalizedPayloadPathSignature = typeof payloadPathSignature === 'string'
+                        ? payloadPathSignature.toLowerCase()
+                        : null;
+                    const normalizedDataSignature = typeof dataSignature === 'string'
+                        ? dataSignature.toLowerCase()
+                        : null;
+                    if (normalizedPayloadPathSignature !== normalizedDataSignature) {
+                        this._incrementCommsCounter('netMonSignaturePathMismatch');
+                        this.logger.warn(
+                            `${this._commsPrefix()} netmonSupervisor signature mismatch between EE_PAYLOAD_PATH[2] and DATA.SIGNATURE`,
+                            {
+                                ...this._buildSafeTraceIdentifiers(decoded),
+                                payloadPathSignature,
+                                dataSignature,
+                            },
+                        );
+                    }
+
                     if (decoded.DATA?.CURRENT_NETWORK !== undefined) {
                         this._postToMain({
                             threadId: this.threadId,
@@ -1397,6 +1474,9 @@ export class Thread extends EventEmitter2 {
             })
             .catch((error) => {
                 this._incrementCommsCounter('decodeError');
+                if (isNetMonCandidate) {
+                    this._incrementCommsCounter('netMonDropDecode');
+                }
                 this._registerDropReason('decode_exception');
                 this._onFunnelException('supervisor_decode', error, envelope);
             });
