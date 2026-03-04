@@ -1,6 +1,3 @@
-import { SchemaDefinition, SchemasRepository } from "./utils/schema.providers";
-import type { Observable } from "rxjs";
-
 export const HEARTBEATS_STREAM: "heartbeats";
 export const PAYLOADS_STREAM: "payloads";
 export const NOTIFICATIONS_STREAM: "notifications";
@@ -47,11 +44,25 @@ export class Naeural extends EventEmitter2 {
      */
     constructor(options?: NaeuralOptions, logger?: any);
     /**
+     * Dictionary describing the network topics to listen to.
+     *
+     * @type {{heartbeats: string, payloads: string, notifications: string}}
+     * @private
+     */
+    private topicPaths;
+    /**
      * The boot options.
      *
      * @type {Object}
      */
     bootOptions: any;
+    /**
+     * Internal dictionary keeping references to child threads.
+     *
+     * @type {{heartbeats: Array, payloads: Array, notifications: Array}}
+     * @private
+     */
+    private threads;
     /**
      * The state to update.
      *
@@ -59,17 +70,114 @@ export class Naeural extends EventEmitter2 {
      */
     state: State | null;
     /**
+     * Internal reference to the Blockchain Engine
+     *
+     * @type {NaeuralBC}
+     * @private
+     */
+    private naeuralBC;
+    /**
+     * Internal dictionary keeping references to the streams of events received from the child threads.
+     *
+     * @type {Object.<string, Observable>}
+     * @private
+     */
+    private networkStreams;
+    /**
      * The repository of schemas to be used when interacting with instances and pipelines.
      *
      * @type {SchemasRepository}
      */
     schemas: SchemasRepository;
     /**
+     * The network connection.
+     *
+     * @type {MqttClient}
+     * @private
+     */
+    private mqttClient;
+    /**
+     * Reference to the logger to use.
+     *
+     * @type {Logger}
+     * @private
+     */
+    private logger;
+    /**
+     * A dictionary with network addresses associated to node names.
+     *
+     * @private
+     * @type {*}
+     */
+    private universeAddresses;
+    /**
      * Statistics about the memory used by the SDK.
      *
      * @type {*}
      */
     memoryUsageStats: any;
+    /**
+     * Dictionary of all alerted nodes.
+     *
+     * @type {AlertedNodes}
+     * @private
+     */
+    private alertedNodes;
+    /**
+     * Dictionary of instance callbacks, indexed by NEN name and instance id.
+     *
+     * @type {*}
+     */
+    instanceCallbacks: any;
+    mainCommsDiagnostics: {
+        enabled: boolean;
+        windowMs: number;
+    };
+    mainCommsCounterWindow: any;
+    mainCommsWindowStartedAt: number;
+    mainCommsWindowTimer: any;
+    _mainCommsPrefix(): string;
+    _createMainCommsCounterWindow(): {
+        workerMessagesByType: {};
+        emittedEventsByType: {};
+        streamEventsByType: {};
+    };
+    _resetMainCommsDiagnosticsWindow(): void;
+    _scheduleMainCommsDiagnosticsWindow(): void;
+    _flushMainCommsDiagnosticsWindow(): void;
+    _incrementMainCommsTypeCounter(bucket: any, type: any): void;
+    _recordWorkerMessage(type: any): void;
+    _recordMainEmission(type: any): void;
+    _recordStreamEvent(type: any): void;
+    /**
+     * Internal method for compiling the boot status for the subordinated worker threads.
+     *
+     * @return {FlatArray<Object[], 1>}
+     * @private
+     */
+    private checkBootComplete;
+    /**
+     * Internal method for keeping track of worker threads statuses.
+     *
+     * @param message
+     * @private
+     */
+    private markThreadStatus;
+    /**
+     * Factory method for attaching callbacks on state messages.
+     *
+     * @param {string} messageType
+     * @return {*}
+     * @private
+     */
+    private _onStateMessage;
+    /**
+     * Internal method for processing messages received from the worker threads.
+     *
+     * @return {*}
+     * @private
+     */
+    private _onThreadMessage;
     /**
      * This method connects the client to the network and spawns all the threads on the network streams.
      *
@@ -82,17 +190,13 @@ export class Naeural extends EventEmitter2 {
      * @return {Object}
      */
     getMemoryStats(): any;
+    shutdown(): void;
     /**
      * This method returns the initiator name used for the connection.
      *
      * @return {string} initiator name
      */
     getName(): string;
-    /**
-     * Loads an identity for the current session.
-     *
-     * @param identityPrivateKey
-     */
     loadIdentity(identityPrivateKey: any): boolean;
     /**
      * This method returns the NaeuralEdgeProtocol Network unique blockchain address.
@@ -102,6 +206,7 @@ export class Naeural extends EventEmitter2 {
     getBlockChainAddress(): string;
     registerMessageDecoder(name: any, path: any): void;
     /**
+     * TODO: async
      * Method for registering a new network node without rebooting the client.
      *
      * @param {string} node The node to register.
@@ -109,6 +214,7 @@ export class Naeural extends EventEmitter2 {
      */
     registerEdgeNode(node: string): void;
     /**
+     * TODO: async
      * Method for deregistering a network node without rebooting the client.
      *
      * @param {string} node The node to register.
@@ -184,7 +290,7 @@ export class Naeural extends EventEmitter2 {
      * @param stream
      * @return {Observable|null} a subscribable stream with the selected event type.
      */
-    getStream(stream: any): Observable<Object> | null;
+    getStream(stream: any): Observable | null;
     /**
      * Sets a custom callback for a specific instance.
      *
@@ -217,6 +323,16 @@ export class Naeural extends EventEmitter2 {
      * @return {Promise<unknown>}
      */
     publish(node: string, message: any, extraWatches?: Array<Array<string>>): Promise<unknown>;
+    /**
+     * Private method for checking if a specified address is in the controlled fleet or if it's heartbeat has been
+     * witnessed.
+     *
+     * @param {string} address
+     * @return {Promise<boolean>}
+     * @private
+     */
+    private _checkNode;
+    _maybeCallInstanceCallback(message: any): void;
 }
 export type AlertedNodes = {
     [x: string]: number;
@@ -312,6 +428,5 @@ export type AvailableDCTResponse = {
     type: string;
 };
 import EventEmitter2 from 'eventemitter2';
-import { NodeStatus, ObservedNodes, State } from './models/state.js';
+import { State } from './models/state.js';
 import { NodeManager } from './node.manager.js';
-import { PluginInstance } from './models/plugin.instance';

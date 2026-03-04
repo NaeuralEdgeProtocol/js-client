@@ -1,6 +1,6 @@
 import { parentPort } from 'worker_threads';
 import * as mqtt from 'mqtt';
-import { concatMap, filter, fromEvent, map, tap } from 'rxjs';
+import { catchError, concatMap, EMPTY, filter, from, fromEvent, map, tap } from 'rxjs';
 import { processHeartbeat } from './heartbeat.processor.js';
 import { notificationProcessor } from './notification.processor.js';
 import { payloadProcessor } from './payload.processor.js';
@@ -32,7 +32,8 @@ import {
     MESSAGE_TYPE_THREAD_MEMORY_USAGE,
     MESSAGE_TYPE_NETWORK_NODE_DOWN,
     MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
-    MESSAGE_TYPE_THREAD_LOG, ADDRESSES_UPDATES_INBOX, MESSAGE_TYPE_REFRESH_ADDRESSES,
+    MESSAGE_TYPE_THREAD_LOG, ADDRESSES_UPDATES_INBOX, MESSAGE_TYPE_REFRESH_ADDRESSES, ADMIN_PIPELINE_NAME,
+    NETMON_SIGNATURE,
 } from '../constants.js';
 import { NaeuralBC } from '../utils/blockchain.js';
 import {hasFleetFilter, isAddress} from '../utils/helper.functions.js';
@@ -40,7 +41,10 @@ import EventEmitter2 from 'eventemitter2';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
 
 export const THREAD_START_OK = 'thread.start.ok';
-export const THREAD_START_ERR = 'thread.start.ok';
+export const THREAD_START_ERR = 'thread.start.err';
+
+const COMMS_DIAGNOSTIC_WINDOW_MS = 60_000;
+const NETMON_TRACE_SAMPLE_RATE = 10;
 
 class ThreadLogger {
     /**
@@ -209,6 +213,11 @@ export class Thread extends EventEmitter2 {
             encrypt: true,
             secure: true,
         },
+        commsDiagnostics: {
+            enabled: true,
+            windowMs: COMMS_DIAGNOSTIC_WINDOW_MS,
+            netMonSampleRate: NETMON_TRACE_SAMPLE_RATE,
+        },
         fleet: [ALL_EDGE_NODES],
     };
 
@@ -258,6 +267,24 @@ export class Thread extends EventEmitter2 {
      */
     secure = true;
 
+    signatureDebugEnabled = false;
+
+    commsDiagnostics = {
+        enabled: true,
+        windowMs: COMMS_DIAGNOSTIC_WINDOW_MS,
+        netMonSampleRate: NETMON_TRACE_SAMPLE_RATE,
+    };
+
+    commsCounterWindow = null;
+
+    commsWindowStartedAt = 0;
+
+    commsWindowTimer = null;
+
+    commsSequence = 0;
+
+    netMonSeen = 0;
+
     constructor(options, redisOptions, logger) {
         super();
         this.logger = logger;
@@ -267,10 +294,28 @@ export class Thread extends EventEmitter2 {
         this.threadId = options.id;
         this.threadType = options.type;
         this.startupOptions = Object.assign(this.startupOptions, options.config);
+        this.startupOptions.commsDiagnostics = Object.assign(
+            {},
+            this.startupOptions.commsDiagnostics,
+            options.config?.commsDiagnostics ?? {},
+        );
+        this.startupOptions.naeuralBC = Object.assign({}, this.startupOptions.naeuralBC, {
+            debug: this.startupOptions.naeuralBC?.debug ?? this.startupOptions.naeuralBC?.debugMode ?? false,
+        });
         this.naeuralBC = new NaeuralBC(this.startupOptions.naeuralBC);
 
-        this.encryptCommunication = this.startupOptions.naeuralBC.encrypt || true;
-        this.secure = this.startupOptions.naeuralBC.secure || true;
+        this.encryptCommunication = this.startupOptions.naeuralBC.encrypt ?? true;
+        this.secure = this.startupOptions.naeuralBC.secure ?? true;
+        this.signatureDebugEnabled = this.startupOptions.naeuralBC.debug === true;
+        this.commsDiagnostics.enabled = this.startupOptions.commsDiagnostics.enabled !== false;
+        this.commsDiagnostics.windowMs = Number.isFinite(this.startupOptions.commsDiagnostics.windowMs)
+            ? Math.max(1_000, this.startupOptions.commsDiagnostics.windowMs)
+            : COMMS_DIAGNOSTIC_WINDOW_MS;
+        this.commsDiagnostics.netMonSampleRate = Number.isFinite(this.startupOptions.commsDiagnostics.netMonSampleRate)
+            ? Math.max(1, this.startupOptions.commsDiagnostics.netMonSampleRate)
+            : NETMON_TRACE_SAMPLE_RATE;
+        this._resetCommsDiagnosticsWindow();
+        this._scheduleCommsDiagnosticsWindow();
 
         this.logger.log(
             `Starting new ${options.type} thread with ${this.startupOptions.stateManager} state manager...`,
@@ -290,25 +335,26 @@ export class Thread extends EventEmitter2 {
         if (options.formatters !== undefined && typeof options.formatters === 'object') {
             Object.keys(options.formatters).forEach((formatterName) => {
                 this.logger.log(`... loading custom formatters: ${formatterName}`);
+                const normalizedFormatter = this._normalizeFormatterKey(formatterName);
                 // Dynamic import of the formatter
                 import(options.formatters[formatterName]).then(
                     (module) => {
                         if (Object.keys(module).includes('_in')) {
-                            if (!formatters[formatterName]) {
-                                formatters[formatterName] = {};
+                            if (!formatters[normalizedFormatter]) {
+                                formatters[normalizedFormatter] = {};
                             }
-                            formatters[formatterName]['in'] = module['_in'];
+                            formatters[normalizedFormatter].in = module._in;
 
-                            this.logger.log(`... loaded ${formatterName}:_in`);
+                            this.logger.log(`... loaded ${normalizedFormatter}:_in`);
                         }
 
                         if (Object.keys(module).includes('_out')) {
-                            if (!formatters[formatterName]) {
-                                formatters[formatterName] = {};
+                            if (!formatters[normalizedFormatter]) {
+                                formatters[normalizedFormatter] = {};
                             }
-                            formatters[formatterName]['out'] = module['_out'];
+                            formatters[normalizedFormatter].out = module._out;
 
-                            this.logger.log(`... loaded ${formatterName}:_out`);
+                            this.logger.log(`... loaded ${normalizedFormatter}:_out`);
                         }
                     },
                     (err) => {
@@ -397,134 +443,166 @@ export class Thread extends EventEmitter2 {
 
         fromEvent(this.mqttClient, 'message')
             .pipe(
-                map((message) => this._bufferToString(message)),
-                filter((message) => {
-                    return this._messageIsSigned(message);
-                }),
-                map((message) => this._toJSON(message)),
-                filter((message) => this._messageIsFromEdgeNode(message)),
-                tap((message) => this._processSupervisorPayload(message)),
-                filter((message) => this._messageFromControlledFleet(message)),
-                filter((message) => this._messageHasKnownFormat(message)),
-                concatMap((message) => this._decodeToInternalFormat(message)),
-            )
-            .subscribe((message) => {
-                const context = this._makeContext(message.EE_PAYLOAD_PATH, message.EE_SENDER);
-                let data = message;
-
-                // route heartbeats as they come
-                if (this.threadType === THREAD_TYPE_HEARTBEATS) {
-                    this.mainThread.postMessage({
-                        threadId: this.threadId,
-                        type: message.EE_EVENT_TYPE,
-                        success: true,
-                        error: null,
-                        data: data,
-                        context,
-                    });
-
-                    return;
-                }
-
-                // build the data and the context for this message
-                data = { ...message.DATA };
-                delete message.DATA;
-                context.metadata = message;
-                context.metadata['SESSION_ID'] = data['SESSION_ID'];
-
-                // add notification metadata to context
-                if (message.EE_EVENT_TYPE === MESSAGE_TYPE_NOTIFICATION) {
-                    context.metadata['NOTIFICATION_CODE'] = data['NOTIFICATION_CODE'];
-                    context.metadata['NOTIFICATION_TAG'] = data['NOTIFICATION_TAG'];
-                    context.metadata['NOTIFICATION_TYPE'] = data['NOTIFICATION_TYPE'];
-                }
-
-                const sessionId = context.metadata.SESSION_ID;
-                let path = [...context.metadata.EE_PAYLOAD_PATH];
-                path[0] = this._getAddress(path[0]);
-                path = path.join(':');
-
-                // for notifications, route responses to expecting inboxes for transaction handling
-                // then bubble the notification for the consumer
-                if (this.threadType === THREAD_TYPE_NOTIFICATIONS) {
-                    // notification is relevant for another thread
-                    if ((sessionId !== null && !!this.watchlist[sessionId]) || !!this.watchlist[path]) {
-                        if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
-                            const receivers = this.watchlist[sessionId]
-                                ? [this.watchlist[sessionId]]
-                                : this.watchlist[path];
-                            receivers.forEach((receiver) => {
-                                this.publishChannel.publish(
-                                    receiver,
-                                    JSON.stringify({
-                                        type: MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
-                                        data: data,
-                                        context,
-                                    }),
-                                );
+                map((message) => this._createFunnelEnvelope(message)),
+                map((envelope) => this._stageBufferToString(envelope)),
+                filter((envelope) => this._stageSignatureGate(envelope)),
+                map((envelope) => this._stageJsonParse(envelope)),
+                filter((envelope) => envelope.message !== null),
+                filter((envelope) => this._stageEdgeNodeGate(envelope)),
+                tap((envelope) => this._processSupervisorPayload(envelope.message, envelope)),
+                filter((envelope) => this._stageFleetGate(envelope)),
+                filter((envelope) => this._stageFormatterGate(envelope)),
+                concatMap((envelope) =>
+                    from(this._stageDecode(envelope)).pipe(
+                        filter((decodedEnvelope) => decodedEnvelope !== null),
+                        catchError((error) => {
+                            this._incrementCommsCounter('decodeError');
+                            this._registerDropReason('decode_exception');
+                            this._traceNetMonStage(envelope, 'decode', 'error', {
+                                reason: 'decode_exception',
                             });
-                        } else {
-                            this.mainThread.postMessage({
+                            this._onFunnelException('decode', error, envelope);
+
+                            return EMPTY;
+                        }),
+                    ),
+                ),
+                catchError((error, caught) => {
+                    this._onFunnelException('stream', error, null);
+
+                    return caught;
+                }),
+            )
+            .subscribe({
+                next: (envelope) => {
+                    this._emitDecodedMessage(envelope.message);
+                },
+                error: (error) => {
+                    this._onFunnelException('subscription', error, null);
+                },
+            });
+    }
+
+    _emitDecodedMessage(message) {
+        try {
+            const context = this._makeContext(message.EE_PAYLOAD_PATH, message.EE_SENDER);
+            let data = message;
+
+            // route heartbeats as they come
+            if (this.threadType === THREAD_TYPE_HEARTBEATS) {
+                this._postToMain({
+                    threadId: this.threadId,
+                    type: message.EE_EVENT_TYPE,
+                    success: true,
+                    error: null,
+                    data,
+                    context,
+                });
+
+                return;
+            }
+
+            // build the data and the context for this message
+            data = { ...message.DATA };
+            delete message.DATA;
+            context.metadata = message;
+            context.metadata.SESSION_ID = data.SESSION_ID;
+
+            // add notification metadata to context
+            if (message.EE_EVENT_TYPE === MESSAGE_TYPE_NOTIFICATION) {
+                context.metadata.NOTIFICATION_CODE = data.NOTIFICATION_CODE;
+                context.metadata.NOTIFICATION_TAG = data.NOTIFICATION_TAG;
+                context.metadata.NOTIFICATION_TYPE = data.NOTIFICATION_TYPE;
+            }
+
+            const sessionId = context.metadata.SESSION_ID;
+            let path = [...context.metadata.EE_PAYLOAD_PATH];
+            path[0] = this._getAddress(path[0]);
+            path = path.join(':');
+
+            // for notifications, route responses to expecting inboxes for transaction handling
+            // then bubble the notification for the consumer
+            if (this.threadType === THREAD_TYPE_NOTIFICATIONS) {
+                // notification is relevant for another thread
+                if ((sessionId !== null && !!this.watchlist[sessionId]) || !!this.watchlist[path]) {
+                    if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
+                        const receivers = this.watchlist[sessionId] ? [this.watchlist[sessionId]] : this.watchlist[path];
+                        receivers.forEach((receiver) => {
+                            this._publishToRedis(
+                                receiver,
+                                {
+                                    type: MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
+                                    data,
+                                    context,
+                                },
+                                MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
+                            );
+                        });
+                    } else {
+                        this._postToMain({
+                            threadId: this.threadId,
+                            type: MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
+                            success: true,
+                            error: null,
+                            data,
+                            context,
+                        });
+                    }
+                }
+
+                this._postToMain({
+                    threadId: this.threadId,
+                    type: message.EE_EVENT_TYPE,
+                    success: true,
+                    error: null,
+                    data,
+                    context,
+                });
+
+                return;
+            }
+
+            if (this.threadType === THREAD_TYPE_PAYLOADS) {
+                if (
+                    (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) ||
+                    (Object.hasOwn(data, 'ON_COMMAND_REQUEST') && !!data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY])
+                ) {
+                    const stickyId = data.COMMAND_PARAMS !== undefined
+                        ? data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]
+                        : data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY];
+
+                    const receiver = this.stickySessions[stickyId];
+
+                    if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
+                        this._publishToRedis(
+                            receiver,
+                            {
                                 threadId: this.threadId,
-                                type: MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
+                                type: message.EE_EVENT_TYPE,
                                 success: true,
                                 error: null,
-                                data: data,
+                                data,
                                 context,
-                            });
-                        }
+                            },
+                            message.EE_EVENT_TYPE,
+                        );
+
+                        return;
                     }
-
-                    this.mainThread.postMessage({
-                        threadId: this.threadId,
-                        type: message.EE_EVENT_TYPE,
-                        success: true,
-                        error: null,
-                        data: data,
-                        context,
-                    });
-
-                    return;
                 }
 
-                if (this.threadType === THREAD_TYPE_PAYLOADS) {
-                    if (
-                      (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) ||
-                      (Object.hasOwn(data, 'ON_COMMAND_REQUEST') && !!data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY])
-                    ) {
-                        const stickyId = data.COMMAND_PARAMS !== undefined ?
-                          data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY] :
-                          data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY];
-
-                        const receiver = this.stickySessions[stickyId];
-
-                        if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
-                            this.publishChannel.publish(
-                                receiver,
-                                JSON.stringify({
-                                    threadId: this.threadId,
-                                    type: message.EE_EVENT_TYPE,
-                                    success: true,
-                                    error: null,
-                                    data: data,
-                                    context,
-                                }),
-                            );
-
-                            return;
-                        }
-                    }
-
-                    this.mainThread.postMessage({
-                        threadId: this.threadId,
-                        type: message.EE_EVENT_TYPE,
-                        success: true,
-                        error: null,
-                        data: data,
-                        context,
-                    });
-                }
-            });
+                this._postToMain({
+                    threadId: this.threadId,
+                    type: message.EE_EVENT_TYPE,
+                    success: true,
+                    error: null,
+                    data,
+                    context,
+                });
+            }
+        } catch (error) {
+            this._onFunnelException('emit_decoded', error, { message });
+        }
     }
 
     do(command, message) {
@@ -572,7 +650,7 @@ export class Thread extends EventEmitter2 {
     }
 
     _reportMemoryUsage() {
-        this.mainThread.postMessage({
+        this._postToMain({
             threadId: this.threadId,
             type: MESSAGE_TYPE_THREAD_MEMORY_USAGE,
             success: true,
@@ -717,8 +795,329 @@ export class Thread extends EventEmitter2 {
         return context;
     }
 
-    _onError(err) {
-        console.log(err);
+    _postToMain(message) {
+        this._incrementCommsTypeCounter('postedToMainByType', message.type ?? 'unknown');
+        this.mainThread?.postMessage(message);
+    }
+
+    _publishToRedis(channel, message, typeHint = null) {
+        const type = typeHint ?? message.type ?? message.command ?? 'unknown';
+        this._incrementCommsTypeCounter('postedToRedisByType', type);
+        this.publishChannel?.publish(channel, JSON.stringify(message));
+    }
+
+    _commsPrefix() {
+        return `[COMMS][JSCLIENT][thread=${this.threadId}][type=${this.threadType}]`;
+    }
+
+    _createCommsCounterWindow() {
+        return {
+            mqttMessageReceived: 0,
+            bufferToStringOk: 0,
+            bufferToStringError: 0,
+            signaturePass: 0,
+            signatureFail: 0,
+            signatureError: 0,
+            jsonParseOk: 0,
+            jsonParseFail: 0,
+            edgeNodePass: 0,
+            edgeNodeDrop: 0,
+            fleetPass: 0,
+            fleetDrop: 0,
+            formatPass: 0,
+            formatDrop: 0,
+            decodeOk: 0,
+            decodeError: 0,
+            supervisorAdminSeen: 0,
+            supervisorNetMonSeen: 0,
+            funnelException: 0,
+            postedToMainByType: {},
+            postedToRedisByType: {},
+            dropReasons: {},
+        };
+    }
+
+    _resetCommsDiagnosticsWindow() {
+        this.commsCounterWindow = this._createCommsCounterWindow();
+        this.commsWindowStartedAt = Date.now();
+    }
+
+    _scheduleCommsDiagnosticsWindow() {
+        if (!this.commsDiagnostics.enabled) {
+            return;
+        }
+
+        if (this.commsWindowTimer) {
+            clearInterval(this.commsWindowTimer);
+        }
+
+        this.commsWindowTimer = setInterval(() => {
+            this._flushCommsDiagnosticsWindow();
+        }, this.commsDiagnostics.windowMs);
+    }
+
+    _flushCommsDiagnosticsWindow() {
+        if (!this.commsDiagnostics.enabled || this.commsCounterWindow === null) {
+            return;
+        }
+
+        const windowMs = Date.now() - this.commsWindowStartedAt;
+        this.logger.log(
+            `${this._commsPrefix()} summary windowMs=${windowMs} counters=${JSON.stringify(this.commsCounterWindow)}`,
+        );
+        this._resetCommsDiagnosticsWindow();
+    }
+
+    _incrementCommsCounter(counter, amount = 1) {
+        if (!this.commsDiagnostics.enabled || this.commsCounterWindow === null) {
+            return;
+        }
+
+        if (!Object.hasOwn(this.commsCounterWindow, counter)) {
+            this.commsCounterWindow[counter] = 0;
+        }
+        this.commsCounterWindow[counter] += amount;
+    }
+
+    _incrementCommsTypeCounter(bucket, type) {
+        if (!this.commsDiagnostics.enabled || this.commsCounterWindow === null) {
+            return;
+        }
+
+        if (!Object.hasOwn(this.commsCounterWindow[bucket], type)) {
+            this.commsCounterWindow[bucket][type] = 0;
+        }
+        this.commsCounterWindow[bucket][type] += 1;
+    }
+
+    _registerDropReason(reason) {
+        if (!this.commsDiagnostics.enabled || this.commsCounterWindow === null) {
+            return;
+        }
+
+        if (!Object.hasOwn(this.commsCounterWindow.dropReasons, reason)) {
+            this.commsCounterWindow.dropReasons[reason] = 0;
+        }
+        this.commsCounterWindow.dropReasons[reason] += 1;
+    }
+
+    _normalizeFormatterKey(formatter) {
+        if (typeof formatter !== 'string') {
+            return 'raw';
+        }
+
+        const key = formatter.trim().toLowerCase();
+        return key === '' ? 'raw' : key;
+    }
+
+    _buildSafeTraceIdentifiers(message, rawMessage = null) {
+        let safeMessage = message;
+
+        if ((!safeMessage || typeof safeMessage !== 'object') && typeof rawMessage === 'string') {
+            try {
+                safeMessage = JSON.parse(rawMessage);
+            } catch {
+                safeMessage = null;
+            }
+        }
+
+        const path = Array.isArray(safeMessage?.EE_PAYLOAD_PATH) ? safeMessage.EE_PAYLOAD_PATH : [];
+        return {
+            sender: safeMessage?.EE_SENDER ?? null,
+            payloadPathHead: path[0] ?? null,
+            payloadPathSignature: path[2] ?? null,
+            messageId: safeMessage?.EE_MESSAGE_ID ?? null,
+            messageSeq: safeMessage?.EE_MESSAGE_SEQ ?? null,
+        };
+    }
+
+    _isNetMonRawCandidate(rawMessage) {
+        if (typeof rawMessage !== 'string') {
+            return false;
+        }
+
+        return rawMessage.toLowerCase().includes(NETMON_SIGNATURE.toLowerCase());
+    }
+
+    _isNetMonMessage(message) {
+        const signature = Array.isArray(message?.EE_PAYLOAD_PATH) ? message.EE_PAYLOAD_PATH[2] : null;
+        return typeof signature === 'string' && signature.toLowerCase() === NETMON_SIGNATURE.toLowerCase();
+    }
+
+    _markNetMonSampling(envelope) {
+        if (!envelope.netMonCandidate || envelope.netMonSamplingMarked) {
+            return;
+        }
+
+        this.netMonSeen += 1;
+        envelope.netMonSamplingMarked = true;
+        envelope.traceNetMon = this.netMonSeen % this.commsDiagnostics.netMonSampleRate === 0;
+    }
+
+    _traceNetMonStage(envelope, stage, outcome, extra = {}) {
+        if (!envelope.traceNetMon) {
+            return;
+        }
+
+        const safe = this._buildSafeTraceIdentifiers(envelope.message, envelope.rawMessage);
+        this.logger.debug(
+            `${this._commsPrefix()} netmonTrace ${JSON.stringify({
+                seq: envelope.seq,
+                stage,
+                outcome,
+                ...safe,
+                ...extra,
+            })}`,
+        );
+    }
+
+    _onFunnelException(stage, error, envelope = null) {
+        this._incrementCommsCounter('funnelException');
+        const safe = envelope ? this._buildSafeTraceIdentifiers(envelope.message, envelope.rawMessage) : {};
+        this.logger.error(`${this._commsPrefix()} funnelException stage=${stage} message="${error.message}"`, {
+            seq: envelope?.seq ?? null,
+            ...safe,
+            stack: error.stack,
+        });
+    }
+
+    _createFunnelEnvelope(message) {
+        this._incrementCommsCounter('mqttMessageReceived');
+        return {
+            seq: ++this.commsSequence,
+            mqttMessage: message,
+            rawMessage: null,
+            message: null,
+            netMonCandidate: false,
+            netMonSamplingMarked: false,
+            traceNetMon: false,
+        };
+    }
+
+    _stageBufferToString(envelope) {
+        try {
+            envelope.rawMessage = this._bufferToString(envelope.mqttMessage);
+            this._incrementCommsCounter('bufferToStringOk');
+        } catch (error) {
+            envelope.rawMessage = '{ EE_FORMATTER: \'ignore-this\'}';
+            this._incrementCommsCounter('bufferToStringError');
+            this._registerDropReason('buffer_to_string_error');
+            this._onFunnelException('buffer_to_string', error, envelope);
+        }
+
+        envelope.netMonCandidate = this._isNetMonRawCandidate(envelope.rawMessage);
+        this._markNetMonSampling(envelope);
+        this._traceNetMonStage(envelope, 'buffer_to_string', 'pass');
+
+        return envelope;
+    }
+
+    _stageSignatureGate(envelope) {
+        try {
+            const verified = this._messageIsSigned(envelope.rawMessage);
+            if (verified) {
+                this._incrementCommsCounter('signaturePass');
+                this._traceNetMonStage(envelope, 'signature_gate', 'pass');
+                return true;
+            }
+
+            this._incrementCommsCounter('signatureFail');
+            this._registerDropReason('signature_invalid');
+            this._traceNetMonStage(envelope, 'signature_gate', 'drop', { reason: 'signature_invalid' });
+            return false;
+        } catch (error) {
+            const bypassed = !this.secure;
+            this._incrementCommsCounter('signatureError');
+            this._registerDropReason('signature_exception');
+            if (bypassed) {
+                this._incrementCommsCounter('signaturePass');
+                this._traceNetMonStage(envelope, 'signature_gate', 'bypass_on_error');
+            } else {
+                this._traceNetMonStage(envelope, 'signature_gate', 'error', {
+                    reason: 'signature_exception',
+                });
+            }
+            this._onFunnelException('signature_gate', error, envelope);
+            return bypassed;
+        }
+    }
+
+    _stageJsonParse(envelope) {
+        try {
+            envelope.message = this._toJSON(envelope.rawMessage, {
+                throwOnError: true,
+            });
+            this._incrementCommsCounter('jsonParseOk');
+            if (this._isNetMonMessage(envelope.message)) {
+                envelope.netMonCandidate = true;
+                this._markNetMonSampling(envelope);
+            }
+            this._traceNetMonStage(envelope, 'json_parse', 'pass');
+        } catch (error) {
+            envelope.message = null;
+            this._incrementCommsCounter('jsonParseFail');
+            this._registerDropReason('parse_error');
+            this._traceNetMonStage(envelope, 'json_parse', 'drop', { reason: 'parse_error' });
+        }
+
+        return envelope;
+    }
+
+    _stageEdgeNodeGate(envelope) {
+        const pass = this._messageIsFromEdgeNode(envelope.message);
+        if (pass) {
+            this._incrementCommsCounter('edgeNodePass');
+            this._traceNetMonStage(envelope, 'edge_node_gate', 'pass');
+            return true;
+        }
+
+        this._incrementCommsCounter('edgeNodeDrop');
+        this._registerDropReason('not_edge_node');
+        this._traceNetMonStage(envelope, 'edge_node_gate', 'drop', { reason: 'not_edge_node' });
+        return false;
+    }
+
+    _stageFleetGate(envelope) {
+        const pass = this._messageFromControlledFleet(envelope.message);
+        if (pass) {
+            this._incrementCommsCounter('fleetPass');
+            this._traceNetMonStage(envelope, 'fleet_gate', 'pass');
+            return true;
+        }
+
+        this._incrementCommsCounter('fleetDrop');
+        this._registerDropReason('fleet_filtered');
+        this._traceNetMonStage(envelope, 'fleet_gate', 'drop', { reason: 'fleet_filtered' });
+        return false;
+    }
+
+    _stageFormatterGate(envelope) {
+        const pass = this._messageHasKnownFormat(envelope.message);
+        if (pass) {
+            this._incrementCommsCounter('formatPass');
+            this._traceNetMonStage(envelope, 'formatter_gate', 'pass');
+            return true;
+        }
+
+        this._incrementCommsCounter('formatDrop');
+        this._registerDropReason('unknown_formatter');
+        this._traceNetMonStage(envelope, 'formatter_gate', 'drop', { reason: 'unknown_formatter' });
+        return false;
+    }
+
+    async _stageDecode(envelope) {
+        try {
+            envelope.message = await this._decodeToInternalFormat(envelope.message);
+            this._incrementCommsCounter('decodeOk');
+            this._traceNetMonStage(envelope, 'decode', 'pass');
+            return envelope;
+        } catch (error) {
+            this._incrementCommsCounter('decodeError');
+            this._registerDropReason('decode_exception');
+            this._traceNetMonStage(envelope, 'decode', 'drop', { reason: 'decode_exception' });
+            this._onFunnelException('decode', error, envelope);
+            return null;
+        }
     }
 
     /*************************************
@@ -726,26 +1125,20 @@ export class Thread extends EventEmitter2 {
      *************************************/
 
     _bufferToString(message) {
-        let stringMessage = '{ EE_FORMATTER: \'ignore-this\'}';
-        try {
-            stringMessage = message[2].payload.toString('utf-8');
-        } catch (e) {
-            this.logger.debug('Message funnel _bufferToString error:', e);
-        }
-
-        return stringMessage;
+        return message[2].payload.toString('utf-8');
     }
 
     _messageIsSigned(message) {
-        let verify = this.naeuralBC.verify(message);
-        if (!verify && this.startupOptions.naeuralBC.debugMode) {
-            this.logger.debug('Unverifiable message', message);
+        const verify = this.naeuralBC.verify(message);
+        if (!verify && this.signatureDebugEnabled) {
+            const safe = this._buildSafeTraceIdentifiers(null, message);
+            this.logger.debug(`${this._commsPrefix()} signatureInvalid ${JSON.stringify(safe)}`);
         }
 
         return !this.secure || verify;
     }
 
-    _toJSON(message) {
+    _toJSON(message, options = {}) {
         let parsedMessage;
 
         try {
@@ -754,7 +1147,7 @@ export class Thread extends EventEmitter2 {
                 const decrypted = this.naeuralBC.decrypt(parsedMessage.EE_ENCRYPTED_DATA ?? null, parsedMessage.EE_SENDER);
 
                 if (decrypted === null) {
-                    return { EE_FORMATTER: 'ignore-this' };
+                    throw new Error('Could not decrypt message.');
                 }
 
                 this.logger.debug(`Decrypted message from ${parsedMessage.EE_SENDER}...`);
@@ -764,7 +1157,11 @@ export class Thread extends EventEmitter2 {
                     parsedMessage[key] = content[key];
                 });
             }
-        } catch (e) {
+        } catch (error) {
+            if (options.throwOnError === true) {
+                throw error;
+            }
+
             return { EE_FORMATTER: 'ignore-this' };
         }
 
@@ -772,136 +1169,151 @@ export class Thread extends EventEmitter2 {
     }
 
     _messageIsFromEdgeNode(message) {
-        return !!message.EE_PAYLOAD_PATH;
+        return !!message?.EE_PAYLOAD_PATH;
     }
 
-    _processSupervisorPayload(message) {
+    _processSupervisorPayload(message, envelope = null) {
         if (
-            this.threadType === THREAD_TYPE_PAYLOADS &&
-            message.EE_PAYLOAD_PATH[1]?.toLowerCase() === 'admin_pipeline'
+            this.threadType !== THREAD_TYPE_PAYLOADS ||
+            message.EE_PAYLOAD_PATH[1]?.toLowerCase() !== ADMIN_PIPELINE_NAME.toLowerCase()
         ) {
-            this.logger.log(`Processing supervisor payload from ${message.EE_PAYLOAD_PATH[0]}:${message.EE_PAYLOAD_PATH[2]}`);
+            return;
+        }
 
-            const duplicate = { ...message };
-            if (this._messageHasKnownFormat(duplicate)) {
-                this._decodeToInternalFormat(duplicate).then((decoded) => {
-                    if (decoded.EE_PAYLOAD_PATH[2]?.toLowerCase() === 'net_mon_01') {
-                        const addressToNode = {};
-                        const nodeToAddress = {};
-                        if (decoded.DATA?.CURRENT_NETWORK !== undefined) {
-                            this.mainThread.postMessage({
-                                threadId: this.threadId,
-                                type: MESSAGE_TYPE_SUPERVISOR_STATUS,
-                                success: true,
-                                error: null,
-                                data: {...decoded.DATA, EE_SENDER: decoded.EE_SENDER },
-                            });
+        this._incrementCommsCounter('supervisorAdminSeen');
+        this.logger.log(`Processing supervisor payload from ${message.EE_PAYLOAD_PATH[0]}:${message.EE_PAYLOAD_PATH[2]}`);
 
-                            Object.keys(decoded.DATA.CURRENT_NETWORK ?? {}).forEach((nodeName) => {
-                                nodeToAddress[nodeName] = decoded.DATA.CURRENT_NETWORK[nodeName].address;
-                                addressToNode[decoded.DATA.CURRENT_NETWORK[nodeName].address] = nodeName;
-                            });
+        const duplicate = { ...message };
+        if (!this._messageHasKnownFormat(duplicate)) {
+            return;
+        }
 
-                            if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
-                                this.publishChannel.publish(
-                                    ADDRESSES_UPDATES_INBOX,
-                                    JSON.stringify({
-                                        command: MESSAGE_TYPE_REFRESH_ADDRESSES,
-                                        nodes: nodeToAddress,
-                                        addresses: addressToNode,
-                                    }),
-                                );
-                            } else {
-                                this.mainThread.postMessage({
-                                    threadId: this.threadId,
-                                    type: MESSAGE_TYPE_REFRESH_ADDRESSES,
-                                    success: true,
-                                    error: null,
+        this._decodeToInternalFormat(duplicate)
+            .then((decoded) => {
+                if (decoded.EE_PAYLOAD_PATH[2]?.toLowerCase() === NETMON_SIGNATURE.toLowerCase()) {
+                    this._incrementCommsCounter('supervisorNetMonSeen');
+                    this._traceNetMonStage(envelope ?? { traceNetMon: false }, 'supervisor_side_path', 'seen');
+                    const addressToNode = {};
+                    const nodeToAddress = {};
+                    if (decoded.DATA?.CURRENT_NETWORK !== undefined) {
+                        this._postToMain({
+                            threadId: this.threadId,
+                            type: MESSAGE_TYPE_SUPERVISOR_STATUS,
+                            success: true,
+                            error: null,
+                            data: { ...decoded.DATA, EE_SENDER: decoded.EE_SENDER },
+                        });
+
+                        Object.keys(decoded.DATA.CURRENT_NETWORK ?? {}).forEach((nodeName) => {
+                            nodeToAddress[nodeName] = decoded.DATA.CURRENT_NETWORK[nodeName].address;
+                            addressToNode[decoded.DATA.CURRENT_NETWORK[nodeName].address] = nodeName;
+                        });
+
+                        if (this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
+                            this._publishToRedis(
+                                ADDRESSES_UPDATES_INBOX,
+                                {
+                                    command: MESSAGE_TYPE_REFRESH_ADDRESSES,
                                     nodes: nodeToAddress,
                                     addresses: addressToNode,
-                                });
-                            }
-                        }
-
-                        if (!!decoded.DATA?.CURRENT_ALERTED) {
-                            // TODO: this should be indexed by node addresses as well
-                            const alerted = Object.keys(decoded.DATA.CURRENT_ALERTED).map((nodeName) => ({
-                                node: nodeName,
-                                address: nodeToAddress[nodeName] ?? null,
-                                lastSeen: decoded.DATA.CURRENT_ALERTED[nodeName]['last_seen_sec'],
-                            }));
-
-                            this.mainThread.postMessage({
+                                },
+                                MESSAGE_TYPE_REFRESH_ADDRESSES,
+                            );
+                        } else {
+                            this._postToMain({
                                 threadId: this.threadId,
-                                type: MESSAGE_TYPE_NETWORK_NODE_DOWN,
+                                type: MESSAGE_TYPE_REFRESH_ADDRESSES,
                                 success: true,
                                 error: null,
-                                data: alerted,
+                                nodes: nodeToAddress,
+                                addresses: addressToNode,
                             });
                         }
                     }
 
-                    const context = {
-                        address: decoded.EE_SENDER,
-                        name: this._getNodeForAddress(decoded.EE_SENDER),
-                        metadata: {},
-                        pipeline: {},
-                        instance: {},
-                    };
-                    const data = { ...decoded.DATA };
-                    delete decoded.DATA;
-                    context.metadata = decoded;
-                    context.metadata['SESSION_ID'] = data['SESSION_ID'];
-                    context.pipeline = {
-                        name: context.metadata.EE_PAYLOAD_PATH[1],
-                    };
-                    context.instance = {
-                        name: context.metadata.EE_PAYLOAD_PATH[3],
-                    };
+                    if (decoded.DATA?.CURRENT_ALERTED) {
+                        // TODO: this should be indexed by node addresses as well
+                        const alerted = Object.keys(decoded.DATA.CURRENT_ALERTED).map((nodeName) => ({
+                            node: nodeName,
+                            address: nodeToAddress[nodeName] ?? null,
+                            lastSeen: decoded.DATA.CURRENT_ALERTED[nodeName].last_seen_sec,
+                        }));
 
-                    if (
-                      (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) ||
-                      (Object.hasOwn(data, 'ON_COMMAND_REQUEST') && !!data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY])
-                    ) {
-                        const stickyId = data.COMMAND_PARAMS !== undefined ?
-                          data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY] :
-                          data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY];
-
-                        const receiver = this.stickySessions[stickyId];
-
-                        if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
-                            this.publishChannel.publish(
-                              receiver,
-                              JSON.stringify({
-                                  threadId: this.threadId,
-                                  type: MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
-                                  success: true,
-                                  error: null,
-                                  data: data,
-                                  context,
-                              }),
-                            );
-
-                            return;
-                        }
+                        this._postToMain({
+                            threadId: this.threadId,
+                            type: MESSAGE_TYPE_NETWORK_NODE_DOWN,
+                            success: true,
+                            error: null,
+                            data: alerted,
+                        });
                     }
+                }
 
-                    this.mainThread.postMessage({
-                        threadId: this.threadId,
-                        type: MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
-                        success: true,
-                        error: null,
-                        data: data,
-                        context: context,
-                    });
+                const context = {
+                    address: decoded.EE_SENDER,
+                    name: this._getNodeForAddress(decoded.EE_SENDER),
+                    metadata: {},
+                    pipeline: {},
+                    instance: {},
+                };
+                const data = { ...decoded.DATA };
+                delete decoded.DATA;
+                context.metadata = decoded;
+                context.metadata.SESSION_ID = data.SESSION_ID;
+                context.pipeline = {
+                    name: context.metadata.EE_PAYLOAD_PATH[1],
+                };
+                context.instance = {
+                    name: context.metadata.EE_PAYLOAD_PATH[3],
+                };
+
+                if (
+                    (Object.hasOwn(data, 'COMMAND_PARAMS') && !!data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]) ||
+                    (Object.hasOwn(data, 'ON_COMMAND_REQUEST') && !!data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY])
+                ) {
+                    const stickyId = data.COMMAND_PARAMS !== undefined
+                        ? data.COMMAND_PARAMS[STICKY_COMMAND_ID_KEY]
+                        : data.ON_COMMAND_REQUEST[STICKY_COMMAND_ID_KEY];
+
+                    const receiver = this.stickySessions[stickyId];
+
+                    if (receiver && this.startupOptions.stateManager === REDIS_STATE_MANAGER) {
+                        this._publishToRedis(
+                            receiver,
+                            {
+                                threadId: this.threadId,
+                                type: MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
+                                success: true,
+                                error: null,
+                                data,
+                                context,
+                            },
+                            MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
+                        );
+
+                        return;
+                    }
+                }
+
+                this._postToMain({
+                    threadId: this.threadId,
+                    type: MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
+                    success: true,
+                    error: null,
+                    data,
+                    context,
                 });
-            }
-        }
+            })
+            .catch((error) => {
+                this._incrementCommsCounter('decodeError');
+                this._registerDropReason('decode_exception');
+                this._onFunnelException('supervisor_decode', error, envelope);
+            });
     }
 
     _messageFromControlledFleet(message) {
         if (this.threadType === THREAD_TYPE_HEARTBEATS) {
-            this.mainThread.postMessage({
+            this._postToMain({
                 threadId: this.threadId,
                 type: MESSAGE_TYPE_OBSERVED_NODE,
                 success: true,
@@ -918,10 +1330,8 @@ export class Thread extends EventEmitter2 {
     }
 
     _messageHasKnownFormat(message) {
-        let knownFormat =
-            message.EE_FORMATTER === '' ||
-            !message.EE_FORMATTER ||
-            !!this.formatters[message.EE_FORMATTER.toLowerCase()];
+        const formatter = this._normalizeFormatterKey(message?.EE_FORMATTER);
+        const knownFormat = !!this.formatters[formatter];
 
         if (!knownFormat) {
             this.logger.debug(`Unknown format ${message.EE_FORMATTER}. Message dropped.`);
@@ -931,8 +1341,13 @@ export class Thread extends EventEmitter2 {
     }
 
     async _decodeToInternalFormat(message) {
-        const format = message.EE_FORMATTER ?? 'raw';
-        const internalMessage = this.formatters[format].in(message);
+        const formatter = this._normalizeFormatterKey(message?.EE_FORMATTER);
+        const formatterInput = this.formatters[formatter] ?? this.formatters.raw;
+        if (!formatterInput || typeof formatterInput.in !== 'function') {
+            throw new Error(`Formatter "${formatter}" is not available.`);
+        }
+
+        const internalMessage = formatterInput.in(message);
 
         switch (internalMessage.EE_EVENT_TYPE) {
             case MESSAGE_TYPE_HEARTBEAT:

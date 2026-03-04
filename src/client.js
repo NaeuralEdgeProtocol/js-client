@@ -94,7 +94,7 @@ import { InternalStateManager } from './models/internal.state.manager.js';
 import { RedisStateManager } from './models/redis.state.manager.js';
 import { Logger } from './app.logger.js';
 import { NodeManager } from './node.manager.js';
-import { hasFleetFilter, isAddress } from "./utils/helper.functions.js";
+import { hasFleetFilter, isAddress } from './utils/helper.functions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -130,6 +130,8 @@ export const NaeuralEvent = {
     NAEURAL_EXCEPTION: '0xai_EX',
     NAEURAL_ENGINE_OFFLINE: '0xai_EEOFF',
 };
+
+const COMMS_DIAGNOSTIC_WINDOW_MS = 60_000;
 
 /**
  * @extends EventEmitter2
@@ -183,6 +185,10 @@ export class Naeural extends EventEmitter2 {
             heartbeats: 1,
             notifications: 1,
             payloads: 1,
+        },
+        commsDiagnostics: {
+            enabled: true,
+            windowMs: COMMS_DIAGNOSTIC_WINDOW_MS,
         },
         fleet: [ALL_EDGE_NODES],
     };
@@ -295,6 +301,17 @@ export class Naeural extends EventEmitter2 {
      */
     instanceCallbacks = {};
 
+    mainCommsDiagnostics = {
+        enabled: true,
+        windowMs: COMMS_DIAGNOSTIC_WINDOW_MS,
+    };
+
+    mainCommsCounterWindow = null;
+
+    mainCommsWindowStartedAt = 0;
+
+    mainCommsWindowTimer = null;
+
     /**
      * The network client constructor.
      *
@@ -325,16 +342,27 @@ export class Naeural extends EventEmitter2 {
             this.logger = logger;
         }
 
-        options.initialFleet = [...options.fleet];
+        options.initialFleet = [...(options.fleet ?? [])];
         options.fleet = [];
 
         this.schemas = defaultSchemas();
         this.bootOptions = Object.assign(this.bootOptions, options);
-        this.bootOptions.redis.pubSubChannel = `updates-${this.bootOptions.initiator}`;
 
-        if (!options.initiator) {
+        if (!this.bootOptions.initiator) {
             this.bootOptions.initiator = uuidv4().substring(0, 13);
         }
+        this.bootOptions.redis.pubSubChannel = `updates-${this.bootOptions.initiator}`;
+        this.bootOptions.commsDiagnostics = Object.assign(
+            {},
+            this.bootOptions.commsDiagnostics,
+            options.commsDiagnostics ?? {},
+        );
+        this.mainCommsDiagnostics.enabled = this.bootOptions.commsDiagnostics.enabled !== false;
+        this.mainCommsDiagnostics.windowMs = Number.isFinite(this.bootOptions.commsDiagnostics.windowMs)
+            ? Math.max(1_000, this.bootOptions.commsDiagnostics.windowMs)
+            : COMMS_DIAGNOSTIC_WINDOW_MS;
+        this._resetMainCommsDiagnosticsWindow();
+        this._scheduleMainCommsDiagnosticsWindow();
 
         if (!this.bootOptions.stateManager || this.bootOptions.stateManager === INTERNAL_STATE_MANAGER) {
             this.state = new State(INTERNAL_STATE_MANAGER, new InternalStateManager(this.logger), {
@@ -390,6 +418,72 @@ export class Naeural extends EventEmitter2 {
         this.naeuralBC = new NaeuralBC(this.bootOptions.blockchain);
     }
 
+    _mainCommsPrefix() {
+        return `[COMMS][JSCLIENT][main][initiator=${this.bootOptions.initiator}]`;
+    }
+
+    _createMainCommsCounterWindow() {
+        return {
+            workerMessagesByType: {},
+            emittedEventsByType: {},
+            streamEventsByType: {},
+        };
+    }
+
+    _resetMainCommsDiagnosticsWindow() {
+        this.mainCommsCounterWindow = this._createMainCommsCounterWindow();
+        this.mainCommsWindowStartedAt = Date.now();
+    }
+
+    _scheduleMainCommsDiagnosticsWindow() {
+        if (!this.mainCommsDiagnostics.enabled) {
+            return;
+        }
+
+        if (this.mainCommsWindowTimer) {
+            clearInterval(this.mainCommsWindowTimer);
+        }
+
+        this.mainCommsWindowTimer = setInterval(() => {
+            this._flushMainCommsDiagnosticsWindow();
+        }, this.mainCommsDiagnostics.windowMs);
+    }
+
+    _flushMainCommsDiagnosticsWindow() {
+        if (!this.mainCommsDiagnostics.enabled || this.mainCommsCounterWindow === null) {
+            return;
+        }
+
+        const windowMs = Date.now() - this.mainCommsWindowStartedAt;
+        this.logger.log(
+            `${this._mainCommsPrefix()} summary windowMs=${windowMs} counters=${JSON.stringify(this.mainCommsCounterWindow)}`,
+        );
+        this._resetMainCommsDiagnosticsWindow();
+    }
+
+    _incrementMainCommsTypeCounter(bucket, type) {
+        if (!this.mainCommsDiagnostics.enabled || this.mainCommsCounterWindow === null) {
+            return;
+        }
+
+        if (!Object.hasOwn(this.mainCommsCounterWindow[bucket], type)) {
+            this.mainCommsCounterWindow[bucket][type] = 0;
+        }
+        this.mainCommsCounterWindow[bucket][type] += 1;
+    }
+
+    _recordWorkerMessage(type) {
+        this._incrementMainCommsTypeCounter('workerMessagesByType', type ?? 'unknown');
+    }
+
+    _recordMainEmission(type) {
+        this._incrementMainCommsTypeCounter('emittedEventsByType', type);
+    }
+
+    _recordStreamEvent(type) {
+        this._incrementMainCommsTypeCounter('streamEventsByType', type);
+    }
+
     /**
      * Internal method for compiling the boot status for the subordinated worker threads.
      *
@@ -411,9 +505,22 @@ export class Naeural extends EventEmitter2 {
      */
     markThreadStatus(message) {
         const thread = this.threads[message.threadType].filter((handler) => handler.id === message.threadId)[0];
+        if (!thread) {
+            this.logger.warn(
+                `${this._mainCommsPrefix()} received status for unknown thread type=${message.threadType} id=${message.threadId}`,
+            );
+            return;
+        }
+
         thread['booted'] = true;
         thread['running'] = message.type === THREAD_START_OK;
         thread['status'] = message;
+
+        if (message.type === THREAD_START_ERR) {
+            this.logger.error(
+                `${this._mainCommsPrefix()} threadBootFailure type=${message.threadType} id=${message.threadId} status=${JSON.stringify(message.status)}`,
+            );
+        }
 
         this.emit(NAEURAL_CLIENT_SYS_TOPIC_SUBSCRIBE, null, {
             threadId: message.threadId,
@@ -453,6 +560,7 @@ export class Naeural extends EventEmitter2 {
             case MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD:
                 return (message) => {
                     this._maybeCallInstanceCallback(message);
+                    this._recordMainEmission(NAEURAL_SUPERVISOR_PAYLOAD);
 
                     client.emit(
                       NAEURAL_SUPERVISOR_PAYLOAD,
@@ -490,6 +598,8 @@ export class Naeural extends EventEmitter2 {
         const client = this;
 
         return (message) => {
+            this._recordWorkerMessage(message.type);
+
             switch (message.type) {
                 case MESSAGE_TYPE_THREAD_LOG:
                     // eslint-disable-next-line no-case-declarations
@@ -581,6 +691,7 @@ export class Naeural extends EventEmitter2 {
                     state.storeNetworkInfo(message.data);
                     break;
                 case MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD:
+                    this._recordMainEmission(NAEURAL_SUPERVISOR_PAYLOAD);
                     client.emit(
                         NAEURAL_SUPERVISOR_PAYLOAD,
                         null, // no error
@@ -589,6 +700,7 @@ export class Naeural extends EventEmitter2 {
                     );
                     break;
                 case MESSAGE_TYPE_HEARTBEAT:
+                    this._recordStreamEvent(MESSAGE_TYPE_HEARTBEAT);
                     if (message.error === null) {
                         state.nodeInfoUpdate(message.data);
                         this.emit(NAEURAL_RECEIVED_HEARTBEAT_FROM_ENGINE, {
@@ -603,9 +715,11 @@ export class Naeural extends EventEmitter2 {
                     state.onRequestResponseNotification(state, message);
                     break;
                 case MESSAGE_TYPE_NOTIFICATION:
+                    this._recordStreamEvent(MESSAGE_TYPE_NOTIFICATION);
                     // TODO: should emit EXCEPTIONS and ABNORMAL FUNCTIONING
                     break;
                 case MESSAGE_TYPE_PAYLOAD:
+                    this._recordStreamEvent(MESSAGE_TYPE_PAYLOAD);
                     this._maybeCallInstanceCallback(message);
 
                     client.emit(
@@ -629,17 +743,25 @@ export class Naeural extends EventEmitter2 {
             const topic = this.topicPaths[threadType].replace('$initiator', this.bootOptions.initiator).replace('$root', this.bootOptions.topicRoot);
 
             this.threads[threadType].forEach((threadConfig, index) => {
+                const suffix = `${threadType.substring(0, 1)}${index}`;
+                const workerClientId = (this.bootOptions.mqttOptions.clientId !== undefined && this.bootOptions.mqttOptions.clientId !== null)
+                    ? `${this.bootOptions.mqttOptions.prefix}_${this.bootOptions.mqttOptions.clientId}_${suffix}`
+                    : null;
                 this.logger.log(`[Main Thread] Booting ${threadType} thread. Id: ${threadConfig.id} Topic: ${topic}`);
+                this.logger.log(
+                    `${this._mainCommsPrefix()} threadBoot type=${threadType} id=${threadConfig.id} topic=${topic} qos=2 clientId=${workerClientId} shareGroup=${this.bootOptions.initiator} stateManager=${this.bootOptions.stateManager} redisChannel=${this.bootOptions.redis.pubSubChannel}`,
+                );
                 threadConfig.thread.postMessage({
                     id: threadConfig.id,
                     command: THREAD_COMMAND_START,
                     type: threadType,
                     config: {
-                        connection: { ...this.bootOptions.mqttOptions, suffix: `${threadType.substring(0, 1)}${index}`, topic: topic },
+                        connection: { ...this.bootOptions.mqttOptions, suffix, topic: topic },
                         secure: true,
                         naeuralBC: this.bootOptions.blockchain,
                         stateManager: this.bootOptions.stateManager,
                         redis: this.bootOptions.redis,
+                        commsDiagnostics: this.bootOptions.commsDiagnostics,
                         fleet: hasFleetFilter(this.bootOptions.initialFleet) ? [ ] : [ ALL_EDGE_NODES ],
                     },
                     formatters: this.bootOptions.customFormatters,

@@ -1,5 +1,5 @@
 export const THREAD_START_OK: "thread.start.ok";
-export const THREAD_START_ERR: "thread.start.ok";
+export const THREAD_START_ERR: "thread.start.err";
 export class Thread extends EventEmitter2 {
     constructor(options: any, redisOptions: any, logger: any);
     /**
@@ -40,6 +40,11 @@ export class Thread extends EventEmitter2 {
             encrypt: boolean;
             secure: boolean;
         };
+        commsDiagnostics: {
+            enabled: boolean;
+            windowMs: number;
+            netMonSampleRate: number;
+        };
         fleet: string[];
     };
     state: {};
@@ -79,7 +84,19 @@ export class Thread extends EventEmitter2 {
      * @type {boolean}
      */
     private secure;
+    signatureDebugEnabled: boolean;
+    commsDiagnostics: {
+        enabled: boolean;
+        windowMs: number;
+        netMonSampleRate: number;
+    };
+    commsCounterWindow: any;
+    commsWindowStartedAt: number;
+    commsWindowTimer: any;
+    commsSequence: number;
+    netMonSeen: number;
     run(mqttClient: any): void;
+    _emitDecodedMessage(message: any): void;
     do(command: any, message: any): void;
     /*************************************
      * Internal thread operations
@@ -99,18 +116,104 @@ export class Thread extends EventEmitter2 {
         instance: any;
         metadata: any;
     };
-    _onError(err: any): void;
+    _postToMain(message: any): void;
+    _publishToRedis(channel: any, message: any, typeHint?: any): void;
+    _commsPrefix(): string;
+    _createCommsCounterWindow(): {
+        mqttMessageReceived: number;
+        bufferToStringOk: number;
+        bufferToStringError: number;
+        signaturePass: number;
+        signatureFail: number;
+        signatureError: number;
+        jsonParseOk: number;
+        jsonParseFail: number;
+        edgeNodePass: number;
+        edgeNodeDrop: number;
+        fleetPass: number;
+        fleetDrop: number;
+        formatPass: number;
+        formatDrop: number;
+        decodeOk: number;
+        decodeError: number;
+        supervisorAdminSeen: number;
+        supervisorNetMonSeen: number;
+        funnelException: number;
+        postedToMainByType: {};
+        postedToRedisByType: {};
+        dropReasons: {};
+    };
+    _resetCommsDiagnosticsWindow(): void;
+    _scheduleCommsDiagnosticsWindow(): void;
+    _flushCommsDiagnosticsWindow(): void;
+    _incrementCommsCounter(counter: any, amount?: number): void;
+    _incrementCommsTypeCounter(bucket: any, type: any): void;
+    _registerDropReason(reason: any): void;
+    _normalizeFormatterKey(formatter: any): string;
+    _buildSafeTraceIdentifiers(message: any, rawMessage?: any): {
+        sender: any;
+        payloadPathHead: any;
+        payloadPathSignature: any;
+        messageId: any;
+        messageSeq: any;
+    };
+    _isNetMonRawCandidate(rawMessage: any): boolean;
+    _isNetMonMessage(message: any): boolean;
+    _markNetMonSampling(envelope: any): void;
+    _traceNetMonStage(envelope: any, stage: any, outcome: any, extra?: {}): void;
+    _onFunnelException(stage: any, error: any, envelope?: any): void;
+    _createFunnelEnvelope(message: any): {
+        seq: number;
+        mqttMessage: any;
+        rawMessage: any;
+        message: any;
+        netMonCandidate: boolean;
+        netMonSamplingMarked: boolean;
+        traceNetMon: boolean;
+    };
+    _stageBufferToString(envelope: any): any;
+    _stageSignatureGate(envelope: any): boolean;
+    _stageJsonParse(envelope: any): any;
+    _stageEdgeNodeGate(envelope: any): boolean;
+    _stageFleetGate(envelope: any): boolean;
+    _stageFormatterGate(envelope: any): boolean;
+    _stageDecode(envelope: any): Promise<any>;
     /*************************************
      * Network messages funnel methods
      *************************************/
-    _bufferToString(message: any): string;
+    _bufferToString(message: any): any;
     _messageIsSigned(message: any): boolean;
-    _toJSON(message: any): any;
+    _toJSON(message: any, options?: {}): any;
     _messageIsFromEdgeNode(message: any): boolean;
-    _processSupervisorPayload(message: any): void;
+    _processSupervisorPayload(message: any, envelope?: any): void;
     _messageFromControlledFleet(message: any): boolean;
     _messageHasKnownFormat(message: any): boolean;
     _decodeToInternalFormat(message: any): Promise<any>;
+    /**
+     * Returns the address for a given value if the value is a node name, returns the value if the value is already
+     * and address.
+     *
+     * @param {string} value
+     * @return {string|null}
+     * @private
+     */
+    private _getAddress;
+    /**
+     * Returns the node name for a given address. Returns null if address has not been observed.
+     *
+     * @param {string} address
+     * @return {string|null}
+     * @private
+     */
+    private _getNodeForAddress;
+    /**
+     * Returns the address for a given node name. Returns null if node has not been observed.
+     *
+     * @param {string} node
+     * @return {string|null}
+     * @private
+     */
+    private _getAddressForNode;
 }
 import EventEmitter2 from 'eventemitter2';
 import * as mqtt from 'mqtt';

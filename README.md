@@ -121,6 +121,53 @@ If Redis mode is used, configure:
 - `fleet: ['<node-name-or-address>', ...]` restricts processing to selected nodes.
 - `registerEdgeNode()` / `deregisterEdgeNode()` can adjust fleet membership at runtime.
 
+## Comms Diagnostics (NET_MON Investigation)
+
+The client now emits low-noise comms diagnostics from both worker threads and the main thread.
+
+Configuration flags:
+
+```js
+{
+  commsDiagnostics: {
+    enabled: true,      // default true
+    windowMs: 60000,    // default 60s summaries
+    netMonSampleRate: 10 // worker-side NET_MON trace sampling (every 10th)
+  }
+}
+```
+
+Worker log prefix:
+
+- `[COMMS][JSCLIENT][thread=<id>][type=<threadType>]`
+
+Main-thread log prefix:
+
+- `[COMMS][JSCLIENT][main][initiator=<initiator>]`
+
+What is counted in worker summaries:
+
+- stage counters: MQTT receive, buffer->string, signature gate, JSON parse, edge-node gate, fleet gate, formatter gate, decode
+- side-path counters: `supervisorAdminSeen`, `supervisorNetMonSeen`
+- routing counters: `postedToMainByType`, `postedToRedisByType`
+- drop reasons: `signature_invalid`, `signature_exception`, `parse_error`, `fleet_filtered`, `unknown_formatter`, `decode_exception`, plus additional gate reasons
+
+NET_MON sampled traces include only safe identifiers:
+
+- `EE_SENDER`
+- `EE_PAYLOAD_PATH` head/signature
+- `EE_MESSAGE_ID`, `EE_MESSAGE_SEQ`
+- local per-message `seq` for stage correlation
+
+No payload/body secrets are printed by diagnostics paths.
+
+Quick interpretation for a 3-minute investigation window:
+
+1. Check worker `mqttMessageReceived` and NET_MON trace lines to confirm NET_MON reached the MQTT thread.
+2. Compare pass/drop counters and `dropReasons` to identify the exact gate where loss occurs.
+3. Check `funnelException` and `funnelException stage=...` logs for stream failures; bad messages are dropped, not fatal.
+4. Check main-thread `workerMessagesByType`, `streamEventsByType`, `emittedEventsByType`, and `threadBoot` logs to validate boot/subscription health and downstream emissions.
+
 ## Node Operations With `NodeManager`
 
 `NodeManager` is retrieved from a running client:

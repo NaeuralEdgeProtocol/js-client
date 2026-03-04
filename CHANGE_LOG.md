@@ -2,6 +2,38 @@
 
 ## [Unreleased] - 2026-03-04
 
+### Version Bump Hygiene
+
+- Synced `package-lock.json` version fields with `package.json` (`3.1.8`) via `npm install --package-lock-only`.
+- Verified `npm pack --json` reports package version `3.1.8`.
+
+### Added (Comms Diagnostics / NET_MON Investigation)
+
+- Added worker-thread comms diagnostics in `src/threads/message.thread.js` with 60s window summaries under prefix `[COMMS][JSCLIENT][thread=<id>][type=<threadType>]`.
+- Added stage-by-stage counters for MQTT receive, buffer decode, signature gate, JSON parse, edge-node gate, fleet gate, formatter gate, decode, plus supervisor side-path counters.
+- Added explicit drop reason accounting (`signature_invalid`, `signature_exception`, `parse_error`, `fleet_filtered`, `unknown_formatter`, `decode_exception`, etc.).
+- Added sampled NET_MON trace correlation (default every 10th NET_MON candidate) with safe identifiers only (`EE_SENDER`, payload path head/signature, message id/seq).
+- Added main-thread parity diagnostics in `src/client.js` with 60s summaries under prefix `[COMMS][JSCLIENT][main][initiator=<id>]`, including worker message totals by type and emission counters.
+- Added per-thread boot-topic detail logging (topic, qos, clientId, share group/initiator, state manager, Redis channel) during `boot()`.
+
+### Fixed
+
+- Fixed `THREAD_START_ERR` constant value in `src/threads/message.thread.js` so it is distinguishable from `THREAD_START_OK`.
+- Fixed boolean initialization for `encrypt`/`secure` in worker thread startup to honor explicit `false` values (`??` semantics).
+- Fixed `pubSubChannel` initialization order in `src/client.js` so the fallback initiator is resolved before channel derivation (`updates-null` removed).
+- Fixed signature debug mismatch (`debug` vs `debugMode`) so signature debug behavior is consistently activated.
+- Normalized formatter handling across `_messageHasKnownFormat()` and `_decodeToInternalFormat()` using the same key normalization and safe fallback behavior for empty/case-variant formatter values.
+- Added resilient RxJS funnel error handling so malformed messages are dropped and counted without terminating processing.
+
+### Tests
+
+- Added `tests/threads/message.thread.spec.js` (executed by current Jest config) covering signature bypass when `secure=false`, signature-failure/drop accounting with continued processing, and formatter empty/case-variant handling.
+- Added `tests/client.comms.spec.js` covering `THREAD_START_ERR` non-running semantics and resolved-initiator Redis pub/sub channel naming.
+
+### Documentation
+
+- Updated `README.md` with comms diagnostics flags, log prefixes, gate/drop interpretation, and NET_MON loss debugging workflow.
+
 ### Added
 
 - Added `AGENTS.md` with CBCB (critic-builder-critic-builder) iterative refinement guidance, evidence gates, and decision hygiene.
