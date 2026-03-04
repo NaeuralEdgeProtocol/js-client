@@ -8,3 +8,7 @@ docs/jsdoc/@naeural/jsclient/*/scripts/
 .vscode/
 dist/
 node_modules/
+AGENTS.md
+TODO.md
+CHANGE_LOG.md
+naeural-jsclient-*.tgz

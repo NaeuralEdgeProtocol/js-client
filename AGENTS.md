@@ -92,6 +92,15 @@ If relevant to the change:
 - `npm run test:coverage`
 - `npm audit --omit=dev`
 
+## Version Bump Hygiene (Mandatory)
+
+For any change that modifies `"version"` in `package.json`, the agent must:
+
+- Verify `package-lock.json` top-level `version` and `packages[""].version` exactly match `package.json` `version`.
+- If versions are out of sync, run `npm install --package-lock-only` and include the resulting `package-lock.json` update in the same change.
+- Run `npm pack --json` and confirm the packed artifact version matches the bumped version.
+- Check for packaging hygiene regressions (accidental file additions/removals in the tarball) and fix them before finalizing.
+
 ## Repo-Specific Guardrails
 
 - Blockchain and message envelope code is security-sensitive. Avoid silent signature/encryption format changes.
