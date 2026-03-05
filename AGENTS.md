@@ -110,6 +110,7 @@ For any change that modifies `"version"` in `package.json`, the agent must:
 - `REDIS_STATE_MANAGER` changes must preserve cross-process routing semantics.
 - Node/pipeline command generation must remain backward-compatible with existing Naeural nodes.
 - Keep patches focused; avoid unrelated refactors in the same change set.
+- Canonical changelog filename is `CHANGELOG.md` (no underscore). Do not create or update `CHANGE_LOG.md`.
 
 ## Review Output Standard
 

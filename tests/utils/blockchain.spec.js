@@ -1,5 +1,8 @@
 import { beforeAll, describe, expect, test } from '@jest/globals';
+import * as crypto from 'crypto';
+import { Buffer } from 'node:buffer';
 import { NaeuralBC } from '../../src/utils/blockchain.js';
+import { base64ToUrlSafeBase64 } from '../../src/utils/helper.functions.js';
 
 
 describe('NaeuralEdgeProtocol Blockchain Tests', () => {
@@ -79,6 +82,42 @@ describe('NaeuralEdgeProtocol Blockchain Tests', () => {
             '{"SERVER": "gigi", "COMMAND": "get", "PARAMS": "1", "EE_SENDER": "0xai_AsteqC-MZkBK6JCkSxfM-kU46AV0MP6MxiB4K1XAcjzo", "EE_SIGN": "MEQCIBML0hRjJtzKJnaZhLwki2awVTNKE_-TanMrapmkpsI2AiADjkUb8TuKCtysAIfBwKwwPzys-48X6zB9HyINJzGzPQ==", "EE_HASH": "e00e86d172c160edc66177b0c4cbc464ababc2f1827433789e68322c6eb766ed"}';
 
         expect(mockNaeuralEdgeProtocolBCEngine.verify(receivedMessage)).toBe(false);
+    });
+
+    test('verify accepts python-style canonical hash for integral float lexemes', () => {
+        const canonicalPayload = '{"A":0.0,"B":1,"N":{"X":2.0}}';
+        const hash = crypto.createHash('sha256').update(canonicalPayload).digest('hex');
+        const signature = base64ToUrlSafeBase64(
+            crypto.sign(
+                null,
+                Buffer.from(hash, 'hex'),
+                mockNaeuralEdgeProtocolBCEngine.keyPair.privateKey,
+            ).toString('base64'),
+        );
+        const sender = mockNaeuralEdgeProtocolBCEngine.getAddress();
+
+        const receivedMessage =
+            `{"A":0.0,"B":1,"N":{"X":2.0},"EE_SENDER":"${sender}","EE_SIGN":"${signature}","EE_HASH":"${hash}"}`;
+
+        expect(mockNaeuralEdgeProtocolBCEngine.verify(receivedMessage)).toBe(true);
+    });
+
+    test('verify rejects tampered python-style payload when hash/signature are stale', () => {
+        const canonicalPayload = '{"A":0.0,"B":1,"N":{"X":2.0}}';
+        const hash = crypto.createHash('sha256').update(canonicalPayload).digest('hex');
+        const signature = base64ToUrlSafeBase64(
+            crypto.sign(
+                null,
+                Buffer.from(hash, 'hex'),
+                mockNaeuralEdgeProtocolBCEngine.keyPair.privateKey,
+            ).toString('base64'),
+        );
+        const sender = mockNaeuralEdgeProtocolBCEngine.getAddress();
+
+        const tamperedMessage =
+            `{"A":0.0,"B":2,"N":{"X":2.0},"EE_SENDER":"${sender}","EE_SIGN":"${signature}","EE_HASH":"${hash}"}`;
+
+        expect(mockNaeuralEdgeProtocolBCEngine.verify(tamperedMessage)).toBe(false);
     });
 
     test('encrypt', () => {

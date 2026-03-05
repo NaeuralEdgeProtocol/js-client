@@ -307,8 +307,6 @@ export class NaeuralBC {
      * @return {boolean} verification result
      */
     verify(fullJSONMessage) {
-        let hashResult = false;
-        let signatureResult = false;
         let objReceived;
 
         try {
@@ -320,37 +318,76 @@ export class NaeuralBC {
         const signatureB64 = objReceived[EE_SIGN];
         const pkB64 = objReceived[EE_SENDER] ? NaeuralBC._removeAddressPrefix(objReceived[EE_SENDER]) : null;
         const receivedHash = objReceived[EE_HASH];
+        if (!pkB64 || typeof signatureB64 !== 'string' || typeof receivedHash !== 'string') {
+            return false;
+        }
+
         const objData = Object.fromEntries(
             Object.entries(objReceived).filter(([key]) => !NON_DATA_FIELDS.includes(key)),
         );
-        const strData = stringify(objData);
-        const hash = crypto.createHash('sha256').update(strData).digest();
-        const hashHex = hash.toString('hex');
+        const jsCanonicalData = stringify(objData);
+        const jsHash = crypto.createHash('sha256').update(jsCanonicalData).digest();
+        const jsHashHex = jsHash.toString('hex');
 
-        if (hashHex !== receivedHash) {
-            hashResult = false;
-            if (this.debugMode) {
-                console.log(
-                    'Hashes do not match or public key is missing:\n',
-                    '  Computed: ' + hashHex + '\n',
-                    '  Received: ' + receivedHash + '\n',
-                    '  Public key:' + pkB64 + '\n',
-                    '  Data: ' + JSON.stringify(objData) + '\n',
-                    '  Stringify: \'' + strData + '\'',
-                );
-            }
-        } else {
-            hashResult = true;
+        // Compatibility path for Python-style canonicalization where integral floats are emitted as `x.0`.
+        const numberLexemes = NaeuralBC._extractNumberLexemesByPath(fullJSONMessage);
+        const pyCompatCanonicalData = NaeuralBC._stableStringifyWithNumberLexemes(objData, numberLexemes);
+        const pyCompatHash = crypto.createHash('sha256').update(pyCompatCanonicalData).digest();
+        const pyCompatHashHex = pyCompatHash.toString('hex');
+
+        const hashCandidates = [
+            {
+                mode: 'js_stable',
+                hash: jsHash,
+                hashHex: jsHashHex,
+                canonicalData: jsCanonicalData,
+            },
+        ];
+        if (pyCompatHashHex !== jsHashHex) {
+            hashCandidates.push({
+                mode: 'py_compatible',
+                hash: pyCompatHash,
+                hashHex: pyCompatHashHex,
+                canonicalData: pyCompatCanonicalData,
+            });
         }
 
-        if (pkB64) {
-            const signatureBuffer = Buffer.from(urlSafeBase64ToBase64(signatureB64), 'base64');
-            const publicKeyObj = NaeuralBC.addressToPublicKeyObject(pkB64);
+        const matchingHashCandidate = hashCandidates.find((candidate) => candidate.hashHex === receivedHash);
 
+        if (!matchingHashCandidate) {
+            if (this.debugMode) {
+                console.log(
+                    'Hashes do not match:\n',
+                    '  Received: ' + receivedHash + '\n',
+                    '  JS stable: ' + jsHashHex + '\n',
+                    '  PY compatible: ' + pyCompatHashHex + '\n',
+                    '  Public key:' + pkB64 + '\n',
+                    '  Data: ' + JSON.stringify(objData) + '\n',
+                    '  JS Stringify: \'' + jsCanonicalData + '\'',
+                );
+            }
 
-            signatureResult = crypto.verify(
+            return false;
+        }
+
+        const signatureBuffer = Buffer.from(urlSafeBase64ToBase64(signatureB64), 'base64');
+        const publicKeyObj = NaeuralBC.addressToPublicKeyObject(pkB64);
+        const signatureResult = crypto.verify(
+            null,
+            matchingHashCandidate.hash,
+            {
+                key: publicKeyObj,
+                padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+            },
+            signatureBuffer,
+        );
+
+        if (this.debugMode) {
+            console.log(`Verify local hash (${matchingHashCandidate.mode}): ` + signatureResult);
+            const bHash = Buffer.from(receivedHash, 'hex');
+            const signatureRecvResult = crypto.verify(
                 null,
-                hash,
+                bHash,
                 {
                     key: publicKeyObj,
                     padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
@@ -358,30 +395,16 @@ export class NaeuralBC {
                 signatureBuffer,
             );
 
-            if (this.debugMode) {
-                console.log('Verify local hash: ' + signatureResult);
-                const bHash = Buffer.from(receivedHash, 'hex');
-                const signatureRecvResult = crypto.verify(
-                    null,
-                    bHash,
-                    {
-                        key: publicKeyObj,
-                        padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-                    },
-                    signatureBuffer,
+            if (signatureRecvResult) {
+                console.log(
+                    'Signature is valid for received hash & signature meaning that the public key is valid as well as the signature.',
                 );
-
-                if (signatureRecvResult) {
-                    console.log(
-                        'Signature is valid for received hash & signature meaning that the public key is valid as well as the signature. Most likely someone or something modified the payload',
-                    );
-                } else {
-                    console.log('Verify ONLY on received hash & signature FAILED: ' + signatureRecvResult);
-                }
+            } else {
+                console.log('Verify ONLY on received hash & signature FAILED: ' + signatureRecvResult);
             }
         }
 
-        return hashResult && signatureResult;
+        return signatureResult;
     }
 
     encrypt(message, destinationAddress) {
@@ -540,5 +563,104 @@ export class NaeuralBC {
         });
 
         return Buffer.from(key);
+    }
+
+    static _pathToKey(path) {
+        return path.map((segment) => String(segment)).join('\u001f');
+    }
+
+    static _extractNumberLexemesByPath(fullJSONMessage) {
+        const parentMap = new WeakMap();
+        const pendingNumbers = [];
+        let rootValue = null;
+
+        JSON.parse(fullJSONMessage, function (key, value, context) {
+            if (value !== null && typeof value === 'object') {
+                parentMap.set(value, {
+                    holder: this,
+                    key,
+                });
+            }
+
+            if (context && typeof value === 'number' && typeof context.source === 'string') {
+                pendingNumbers.push({
+                    holder: this,
+                    key,
+                    source: context.source,
+                });
+            }
+
+            if (key === '') {
+                rootValue = value;
+            }
+
+            return value;
+        });
+
+        const buildPath = (holder, key) => {
+            const path = [String(key)];
+            let current = holder;
+            while (current && parentMap.has(current)) {
+                const parent = parentMap.get(current);
+                if (parent.key !== '') {
+                    path.push(String(parent.key));
+                }
+                current = parent.holder;
+            }
+
+            return path.reverse();
+        };
+
+        const pathMap = new Map();
+        pendingNumbers.forEach((entry) => {
+            const path = buildPath(entry.holder, entry.key);
+            pathMap.set(NaeuralBC._pathToKey(path), entry.source);
+        });
+
+        if (rootValue && typeof rootValue === 'object') {
+            return pathMap;
+        }
+
+        return new Map();
+    }
+
+    static _stableStringifyWithNumberLexemes(value, numberLexemes, path = []) {
+        if (value === null) {
+            return 'null';
+        }
+
+        if (typeof value === 'number') {
+            const source = numberLexemes.get(NaeuralBC._pathToKey(path));
+            if (typeof source === 'string') {
+                return source;
+            }
+
+            return JSON.stringify(value);
+        }
+
+        if (typeof value === 'string') {
+            return JSON.stringify(value);
+        }
+
+        if (typeof value === 'boolean') {
+            return value ? 'true' : 'false';
+        }
+
+        if (Array.isArray(value)) {
+            const encoded = value.map((item, index) =>
+                NaeuralBC._stableStringifyWithNumberLexemes(item, numberLexemes, [...path, String(index)]),
+            );
+            return `[${encoded.join(',')}]`;
+        }
+
+        if (typeof value === 'object') {
+            const keys = Object.keys(value).sort();
+            const encoded = keys.map((key) =>
+                `${JSON.stringify(key)}:${NaeuralBC._stableStringifyWithNumberLexemes(value[key], numberLexemes, [...path, key])}`,
+            );
+            return `{${encoded.join(',')}}`;
+        }
+
+        return JSON.stringify(value);
     }
 }

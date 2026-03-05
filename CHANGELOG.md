@@ -1,6 +1,72 @@
-# CHANGE_LOG
+# CHANGELOG
 
 ## [Unreleased] - 2026-03-04
+
+### Fixed (Dual Signature Canonicalization Compatibility)
+
+- Updated `src/utils/blockchain.js::verify()` to support two strict hash canonicalization strategies before signature acceptance:
+  - existing JS stable canonicalization (`json-stable-stringify` behavior)
+  - Python-compatible canonicalization preserving incoming numeric lexemes (for integral floats like `0.0`)
+- Added path-aware numeric-lexeme extraction using `JSON.parse` reviver `context.source` and deterministic canonical re-encoding for Python-compatible hash recomputation.
+- Preserved security invariant: message is accepted only if `EE_HASH` matches an approved recomputed hash candidate and signature verifies against that exact candidate hash.
+- Added `tests/utils/blockchain.spec.js` coverage for:
+  - acceptance of valid Python-style canonicalized payload signatures
+  - rejection of tampered payloads with stale hash/signature (no signature-over-received-hash bypass)
+
+### Deep Dive (NET_MON Hash Mismatch Root Cause)
+
+#### Simple Explanation
+
+- Different producers used different rules for converting JSON into the exact text that is hashed.
+- The payload content can be semantically identical, but the hash can still differ if number formatting differs (for example `0.0` vs `0`).
+- The JS verifier originally accepted only the JS-style canonical string, so payloads signed with Python-style canonicalization were dropped as `signature_invalid`.
+
+Think of it as two people reading the same table of values, but one writes `0.0` and the other writes `0` before computing the checksum. Same meaning, different bytes, different hash.
+
+#### Technical Description
+
+- Verification removes envelope signature fields (`EE_SIGN`, `EE_SENDER`, `EE_HASH`) and hashes the remaining payload.
+- Original js-client path used JS canonicalization (`json-stable-stringify` + JavaScript number rendering).
+- Python producers can emit canonical JSON via `json.dumps(sort_keys=True, separators=(',', ':'))`, which preserves integral-float lexemes such as `0.0`, `41.0`.
+- For mixed fleets, both canonicalization strategies existed in live payloads:
+  - JS-style signed payloads verify against JS canonicalization.
+  - Python-style signed payloads verify against Python canonicalization but fail JS canonicalization.
+
+#### Concrete Examples
+
+- `local_data/netmon_42.json`
+  - `EE_HASH`: `e13daf79e4b5092a906d61d6fe511648dc65f5fa542d29ea936e6956e913462d`
+  - JS canonical hash (no `EE_SIGN/EE_SENDER/EE_HASH`): same as `EE_HASH` (pass)
+  - Python canonical hash: `969d7b358e07361c19190a95278d91342196bb24b40277641ba4fca7f2260e43` (mismatch)
+  - Example integral float lexeme in payload: `"SCORE": 0.0`
+
+- `local_data/netmon_51.json`
+  - `EE_HASH`: `bb165b652df2ce19d6f38ebddfe9d2fbf6dc9fa0a55239921df759c900db57f2`
+  - JS canonical hash (no `EE_SIGN/EE_SENDER/EE_HASH`): `0c9238a0fc7a8685f974170d449bc2ae60fd93320f48a637aeac5ea24c39d794` (mismatch)
+  - Python canonical hash: same as `EE_HASH` (pass)
+  - Example integral float lexeme in payload: `"SCORE": 0.0`
+
+#### Why Signature Was Still Valid
+
+- In both payloads, `EE_SIGN` correctly verifies against the embedded `EE_HASH`.
+- Failure happened when js-client recomputed a different hash for `netmon_51` than the one used by its producer.
+- This confirms the issue was canonicalization mismatch, not compromised keys or corrupted signatures.
+
+#### Solution Implemented in JS
+
+- `NaeuralBC.verify()` now computes two approved hash candidates:
+  1. Existing JS stable canonicalization.
+  2. Python-compatible canonicalization preserving numeric lexemes from incoming JSON.
+- Acceptance rule remains strict:
+  - `EE_HASH` must match one approved candidate hash.
+  - Signature must verify against that exact matching candidate hash.
+- Security is not weakened by this change:
+  - no blind trust of `EE_HASH`
+  - no bypass that accepts stale hash/signature pairs after payload tampering.
+
+#### Result
+
+- Payloads signed by either producer style now verify correctly, if and only if signature and hash are consistent for one approved canonicalization path.
 
 ### Follow-Up Fixes (Comms Diagnostics Reliability)
 
@@ -52,7 +118,7 @@
 
 - Added `AGENTS.md` with CBCB (critic-builder-critic-builder) iterative refinement guidance, evidence gates, and decision hygiene.
 - Added `TODO.md` with prioritized fixes discovered during repository review (including automated npm publish on version change).
-- Added `CHANGE_LOG.md` (this file).
+- Added `CHANGELOG.md` (this file).
 
 ### Synced With Published npm Package (`@naeural/jsclient@3.1.6`)
 
@@ -86,7 +152,7 @@
 - Modified: `tests/models/redis.state.manager.spec.js`.
 - Added: `AGENTS.md`.
 - Added: `TODO.md`.
-- Added: `CHANGE_LOG.md`.
+- Added: `CHANGELOG.md`.
 
 ### Discovered Issues (Pending Follow-Up)
 

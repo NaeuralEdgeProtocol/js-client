@@ -2,129 +2,115 @@
 
 Date: 2026-03-05
 
-## Pass 1 - Critic (Specification + Risk Model)
+## Scope
 
-### Task Contract
+Investigate NET_MON_01 signature/hash behavior for:
 
-- Inputs:
-  - `local_data/netmon_42.json`
-  - `local_data/netmon_51.json`
-- Required output:
-  - Determine how each payload behaves at the js-client signature gate for NET_MON_01 processing.
-  - Produce a reproducible simulation plan and execute it.
-  - Record findings and final conclusions.
-- Acceptance criteria:
-  - Use real code paths from this repository for signature verification and message funneling.
-  - Show whether each payload is accepted or dropped at `signature_gate`.
-  - Explain any mismatch between expected and observed behavior.
+- `local_data/netmon_42.json`
+- `local_data/netmon_51.json`
 
-### Compatibility Boundaries
+with corrected assumption that `TIMESTAMP_ARRIVAL` in `42` must be kept as-is.
 
-- Public API unchanged.
-- Runtime-sensitive paths reviewed (no edits):
-  - `src/utils/blockchain.js::verify()`
-  - `src/threads/message.thread.js::_messageIsSigned()`
-  - `src/threads/message.thread.js::_stageSignatureGate()`
-- No change to config shape or message format in this investigation.
+## Contract
 
-### Assumption Ledger
+- Determine acceptance at js-client signature gate for both payloads.
+- Identify root cause for hash mismatch.
+- Validate with direct `NaeuralBC.verify()` and message-thread funnel simulation.
+- Produce a JS-side compatibility solution for mixed producer hashing styles.
 
-- Verified: NET_MON messages are detected via `EE_PAYLOAD_PATH[2] === NET_MON_01` in `message.thread`.
-- Verified: signature gate executes before JSON parse and before NET_MON supervisor handling.
-- Verified: signature verification in `NaeuralBC.verify()` hashes the message with `EE_SIGN`, `EE_SENDER`, `EE_HASH` removed.
-- Unverified: whether the two local payload files are byte/field identical to what arrived on MQTT wire.
+## Compatibility Boundaries
 
-### Risk Register (Failure Modes)
+- Keep Python producer unchanged.
+- Keep signature integrity strict: pass only when signature verifies against a recomputed, approved canonical hash.
+- No bypass that accepts signature over received hash without payload-hash consistency.
 
-- `R1`: Input samples are post-processed and differ from on-wire payload, causing false negatives.
-- `R2`: Signature validity and hash validity may diverge (valid signer over stale hash).
-- `R3`: Investigation could be misread if we only run direct `verify()` and skip funnel simulation.
-- `R4`: Any accidental code mutation in signature/comms path would invalidate conclusions.
+## Re-run Findings (Corrected)
 
-### Invariants
+### Direct verification
 
-- `I1`: `secure=true` means `_stageSignatureGate()` drops when `NaeuralBC.verify()` is `false`.
-- `I2`: Signature gate drop reason for bad verification is `dropReasons.signature_invalid`.
-- `I3`: When signature gate fails, later stages (parse/fleet/formatter/decode) must not run.
+- `netmon_42.json`: `verify(raw) == true`
+- `netmon_51.json`: `verify(raw) == false`
 
-### Evidence Plan
+### Funnel simulation (`Thread` signature gate)
 
-1. Review signature/blockchain and comms funnel modules end-to-end.
-2. Run direct cryptographic checks on both payloads.
-3. Simulate arrival through `Thread` funnel stages (`secure=true`), using MQTT-like envelope payload buffers.
-4. Run targeted normalization probes to test whether a narrow field filter recovers expected acceptance.
-5. Record residual risks and confidence level.
+- `netmon_42.json`: signature gate pass (`signaturePass=1`, no drop reason)
+- `netmon_51.json`: signature gate drop (`dropReasons.signature_invalid=1`)
 
-## Pass 2 - Builder (Minimal Viable Investigation Plan)
+### Hash reconstruction matrix
 
-Simulation procedure (executed):
+For both payloads, hash is computed over payload without `EE_SIGN`, `EE_SENDER`, `EE_HASH`.
 
-1. Load each JSON payload exactly as provided.
-2. Run `NaeuralBC.verify(rawJson)`.
-3. Simulate message arrival:
-   - create funnel envelope (`_createFunnelEnvelope`)
-   - run `_stageBufferToString`
-   - run `_stageSignatureGate`
-   - continue stages only if signature gate passes.
-4. Compare stage counters and drop reasons.
-5. Probe normalization hypotheses:
-   - remove `TIMESTAMP_ARRIVAL`
-   - rerun verification and funnel simulation.
-6. For forensic clarity, also verify whether `EE_SIGN` is valid for the received `EE_HASH` value.
+- `42`:
+  - JS canonical (`json-stable-stringify`): matches `EE_HASH`
+  - Python canonical (`json.dumps(sort_keys=True,separators=(',',':'))`): does not match
+- `51`:
+  - JS canonical: does not match
+  - Python canonical: matches `EE_HASH`
 
-## Pass 3 - Critic (Adversarial Diff Review / Executed Findings)
+### Signature integrity split
 
-### Code Paths Reviewed
+- Both payloads have valid `EE_SIGN` for the embedded `EE_HASH`.
+- For `51`, signature does not verify against JS-recomputed hash because canonicalization differs.
 
-- `src/utils/blockchain.js`
-  - `verify()` computes SHA-256 over stable-stringified payload without `EE_SIGN`, `EE_SENDER`, `EE_HASH`.
-  - Returns `hashMatch && signatureMatch`.
-- `src/threads/message.thread.js`
-  - `_messageIsSigned()` calls `naeuralBC.verify()`.
-  - `_stageSignatureGate()` increments counters and drops with `signature_invalid` when verification fails.
-  - Signature gate occurs before JSON parse and decode.
+## Root Cause
 
-### Executed Simulation Summary
+Mixed producer canonicalization standards:
 
-Reference execution artifact: `/tmp/netmon_simulation_results.json`
+- JS-side canonicalization emits integral numeric values as `0`, `41`, etc.
+- Python canonicalization (for float-typed values) emits `0.0`, `41.0`, etc.
 
-| Case | Hash Matches | `verify()` | Signature Gate | Result |
-|---|---:|---:|---:|---|
-| `42_raw` | no | false | drop | dropped at signature gate (`signature_invalid`) |
-| `42_minus_timestamp_arrival` | yes | true | pass | accepted through decode |
-| `51_raw` | no | false | drop | dropped at signature gate (`signature_invalid`) |
-| `51_minus_timestamp_arrival` | no | false | drop | still dropped at signature gate |
+`netmon_42` was signed with JS-style canonicalization.
+`netmon_51` was signed with Python-style canonicalization.
 
-### Additional Checks
+Because js-client previously verified only JS-style canonicalization, `51` failed hash match.
 
-- For both raw payloads, `EE_SIGN` is valid for the provided `EE_HASH` (`verifyAgainstReceivedHash=true`).
-- Therefore, signer identity/signature are intact, but payload hash recomputation fails in js-client for both raw files.
-- Single-field recovery probe:
-  - `netmon_42`: removing only `TIMESTAMP_ARRIVAL` makes hash and verify pass.
-  - `netmon_51`: no single-field removal matched.
-- Double-field recovery probe:
-  - no matching pair for `netmon_42` or `netmon_51`.
+## Concrete Examples
 
-## Pass 4 - Builder (Hardening + Refinement)
+- `42`: [netmon_42.json:6](/home/andrei/work/js-client/local_data/netmon_42.json:6) has `"SCORE": 0.0`, but the signed hash corresponds to JS-canonical payload where integral floats collapse to `0`.
+- `51`: [netmon_51.json:6](/home/andrei/work/js-client/local_data/netmon_51.json:6) has `"SCORE": 0.0`, and `EE_HASH` at [netmon_51.json:2243](/home/andrei/work/js-client/local_data/netmon_51.json:2243) matches Python canonical form preserving `.0`.
 
-### Findings
+## JS-side Fix Implemented
 
-1. `netmon_42.json` as provided is **not** accepted by current js-client signature verification.
-2. `netmon_42.json` becomes valid if `TIMESTAMP_ARRIVAL` is filtered out before signature verification.
-3. `netmon_51.json` remains invalid even with the same `TIMESTAMP_ARRIVAL` filtering.
-4. Both payloads carry cryptographically valid signatures over their embedded `EE_HASH`; failure is hash/payload canonical-content mismatch at verification time.
+Updated `src/utils/blockchain.js::verify()` to check two approved canonicalization modes:
 
-### Final Conclusions / Insights
+1. Existing JS stable canonical hash (`json-stable-stringify`).
+2. Python-compatible canonical hash built from stable key ordering plus raw numeric lexemes extracted from incoming JSON (`JSON.parse` reviver `context.source`, Node 22).
 
-- The NET_MON acceptance difference is consistent with a payload-filtering/canonicalization mismatch, not with broken key signatures.
-- A narrow filter (`TIMESTAMP_ARRIVAL`) is sufficient to recover `4.2` sample acceptance, but insufficient for `5.1`.
-- This supports the initial expectation directionally (`4.2` recoverable, `5.1` not), with the important caveat that **raw local files are both rejected unless filtering is applied before verification**.
+Validation rule remains strict:
 
-### Residual Risk
+- Recompute candidate hashes.
+- Require `received EE_HASH` to match one candidate.
+- Verify signature against that exact matching hash.
+- Return false otherwise.
 
-- Because local files may be post-processed snapshots (not guaranteed wire-identical), conclusions about production behavior should be validated with true on-wire MQTT captures.
+This preserves security invariants while accepting either producer style.
 
-### Confidence Statement
+## Tests Added
 
-- Confidence: medium-high for js-client behavior on the provided files (direct code-path simulation and cryptographic checks executed).
-- Confidence: medium for upstream root-cause attribution (depends on whether local samples preserve exact wire payload fields/order/content).
+In `tests/utils/blockchain.spec.js`:
+
+- Accepts python-style canonical hash when payload contains integral float lexemes (`0.0`, `2.0`).
+- Rejects tampered python-style payload when hash/signature are stale.
+
+## Evidence Gates
+
+Executed:
+
+- `npm test` (pass)
+- `npx eslint "{src,tests}/**/*.js"` (pass)
+- `npm run generate:typedefs` (pass)
+
+Version/packaging hygiene:
+
+- Bumped `package.json` patch version to `3.1.18`.
+- Verified lockfile versions match `3.1.18`.
+- `npm pack --json` verified with `NPM_CONFIG_CACHE=/tmp/.npm-cache` due local npm cache permission issue.
+- Tarball hygiene check: no accidental inclusions.
+
+## Residual Risk
+
+- Python-compatible path relies on `JSON.parse` reviver `context.source` support (available in Node 22 used here). If runtime node versions vary, compatibility should be validated in CI/runtime matrix.
+
+## Confidence
+
+- High confidence for identified root cause and implemented mitigation, supported by direct hash/signature matrix and end-to-end tests.
