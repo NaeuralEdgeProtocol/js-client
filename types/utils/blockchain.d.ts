@@ -48,6 +48,7 @@ export class NaeuralBC {
     private static _removeAddressPrefix;
     static _pathToKey(path: any): any;
     static _extractNumberLexemesByPath(fullJSONMessage: any): Map<any, any>;
+    static _extractNumberLexemesByPathFallback(fullJSONMessage: any): Map<any, any>;
     static _stableStringifyWithNumberLexemes(value: any, numberLexemes: any, path?: any[]): any;
     /**
      * NaeuralEdgeProtocol Network Blockchain engine constructor.

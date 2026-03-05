@@ -573,8 +573,13 @@ export class NaeuralBC {
         const parentMap = new WeakMap();
         const pendingNumbers = [];
         let rootValue = null;
+        let reviverContextSupported = false;
 
         JSON.parse(fullJSONMessage, function (key, value, context) {
+            if (arguments.length >= 3) {
+                reviverContextSupported = true;
+            }
+
             if (value !== null && typeof value === 'object') {
                 parentMap.set(value, {
                     holder: this,
@@ -617,11 +622,205 @@ export class NaeuralBC {
             pathMap.set(NaeuralBC._pathToKey(path), entry.source);
         });
 
-        if (rootValue && typeof rootValue === 'object') {
-            return pathMap;
+        if (rootValue && typeof rootValue === 'object' && reviverContextSupported) {
+            return pathMap.size > 0
+                ? pathMap
+                : NaeuralBC._extractNumberLexemesByPathFallback(fullJSONMessage);
         }
 
-        return new Map();
+        return NaeuralBC._extractNumberLexemesByPathFallback(fullJSONMessage);
+    }
+
+    static _extractNumberLexemesByPathFallback(fullJSONMessage) {
+        const text = fullJSONMessage;
+        const len = text.length;
+        const pathMap = new Map();
+        let i = 0;
+
+        const isWhitespace = (ch) => ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t';
+        const isDigit = (ch) => ch >= '0' && ch <= '9';
+
+        const skipWhitespace = () => {
+            while (i < len && isWhitespace(text[i])) {
+                i += 1;
+            }
+        };
+
+        const parseString = () => {
+            if (text[i] !== '"') {
+                throw new Error('Expected string');
+            }
+
+            const start = i;
+            i += 1;
+            while (i < len) {
+                const ch = text[i];
+                if (ch === '\\') {
+                    i += 2;
+                    continue;
+                }
+                if (ch === '"') {
+                    i += 1;
+                    return JSON.parse(text.slice(start, i));
+                }
+                i += 1;
+            }
+
+            throw new Error('Unterminated string');
+        };
+
+        const parseLiteral = (literal) => {
+            if (text.slice(i, i + literal.length) !== literal) {
+                throw new Error(`Expected ${literal}`);
+            }
+            i += literal.length;
+        };
+
+        const parseNumber = (path) => {
+            const start = i;
+
+            if (text[i] === '-') {
+                i += 1;
+            }
+
+            if (text[i] === '0') {
+                i += 1;
+            } else if (isDigit(text[i])) {
+                while (i < len && isDigit(text[i])) {
+                    i += 1;
+                }
+            } else {
+                throw new Error('Invalid number');
+            }
+
+            if (text[i] === '.') {
+                i += 1;
+                if (!isDigit(text[i])) {
+                    throw new Error('Invalid fractional number');
+                }
+                while (i < len && isDigit(text[i])) {
+                    i += 1;
+                }
+            }
+
+            if (text[i] === 'e' || text[i] === 'E') {
+                i += 1;
+                if (text[i] === '+' || text[i] === '-') {
+                    i += 1;
+                }
+                if (!isDigit(text[i])) {
+                    throw new Error('Invalid exponent');
+                }
+                while (i < len && isDigit(text[i])) {
+                    i += 1;
+                }
+            }
+
+            const lexeme = text.slice(start, i);
+            pathMap.set(NaeuralBC._pathToKey(path), lexeme);
+        };
+
+        const parseValue = (path) => {
+            skipWhitespace();
+            const ch = text[i];
+            if (ch === '{') {
+                i += 1;
+                skipWhitespace();
+                if (text[i] === '}') {
+                    i += 1;
+                    return;
+                }
+
+                while (i < len) {
+                    const key = parseString();
+                    skipWhitespace();
+                    if (text[i] !== ':') {
+                        throw new Error('Expected object key/value separator');
+                    }
+                    i += 1;
+                    parseValue([...path, key]);
+                    skipWhitespace();
+
+                    if (text[i] === ',') {
+                        i += 1;
+                        skipWhitespace();
+                        continue;
+                    }
+                    if (text[i] === '}') {
+                        i += 1;
+                        return;
+                    }
+                    throw new Error('Expected object delimiter');
+                }
+                throw new Error('Unterminated object');
+            }
+
+            if (ch === '[') {
+                i += 1;
+                skipWhitespace();
+                if (text[i] === ']') {
+                    i += 1;
+                    return;
+                }
+
+                let index = 0;
+                while (i < len) {
+                    parseValue([...path, String(index)]);
+                    index += 1;
+                    skipWhitespace();
+
+                    if (text[i] === ',') {
+                        i += 1;
+                        skipWhitespace();
+                        continue;
+                    }
+                    if (text[i] === ']') {
+                        i += 1;
+                        return;
+                    }
+                    throw new Error('Expected array delimiter');
+                }
+                throw new Error('Unterminated array');
+            }
+
+            if (ch === '"') {
+                parseString();
+                return;
+            }
+
+            if (ch === '-' || isDigit(ch)) {
+                parseNumber(path);
+                return;
+            }
+
+            if (ch === 't') {
+                parseLiteral('true');
+                return;
+            }
+
+            if (ch === 'f') {
+                parseLiteral('false');
+                return;
+            }
+
+            if (ch === 'n') {
+                parseLiteral('null');
+                return;
+            }
+
+            throw new Error(`Unexpected token '${ch ?? 'EOF'}'`);
+        };
+
+        try {
+            parseValue([]);
+            skipWhitespace();
+            if (i !== len) {
+                return new Map();
+            }
+            return pathMap;
+        } catch {
+            return new Map();
+        }
     }
 
     static _stableStringifyWithNumberLexemes(value, numberLexemes, path = []) {

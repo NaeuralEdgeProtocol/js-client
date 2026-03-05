@@ -120,6 +120,16 @@ describe('NaeuralEdgeProtocol Blockchain Tests', () => {
         expect(mockNaeuralEdgeProtocolBCEngine.verify(tamperedMessage)).toBe(false);
     });
 
+    test('fallback numeric lexeme extractor records python-style integral floats', () => {
+        const payload = '{"A":0.0,"B":[1,2.0],"C":{"D":3.5}}';
+        const lexemes = NaeuralBC._extractNumberLexemesByPathFallback(payload);
+
+        expect(lexemes.get(NaeuralBC._pathToKey(['A']))).toBe('0.0');
+        expect(lexemes.get(NaeuralBC._pathToKey(['B', '0']))).toBe('1');
+        expect(lexemes.get(NaeuralBC._pathToKey(['B', '1']))).toBe('2.0');
+        expect(lexemes.get(NaeuralBC._pathToKey(['C', 'D']))).toBe('3.5');
+    });
+
     test('encrypt', () => {
         const data = '{"value": "Hello World"}';
         const destinationAddress = '0xai_A3vtcVIv_yL7k945IuhNjLUXKj2DPvbapoH4D6ZairfT';
