@@ -1,6 +1,6 @@
 {
   "name": "@hyfy/jsclient",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "This is the JS client for custom server-side access of R1 Edge Node fleets",
   "type": "module",
   "files": [
@@ -27,7 +27,8 @@
     "naeural": "src/cli.js"
   },
   "contributors": [
-    "Radu Lupaescu <radu.lupaescu@gmail.com>"
+    "Radu Lupaescu <radu.lupaescu@gmail.com>",
+    "Andrei Ionut Damian <andrei.damian@me.com>"
   ],
   "license": "Apache2.0",
   "homepage": "https://github.com/NaeuralEdgeProtocol/js-client#readme",
