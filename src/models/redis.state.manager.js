@@ -12,7 +12,7 @@ import {
     NETWORK_STICKY_PAYLOAD_RECEIVED,
     FLEET_UPDATES_INBOX,
     FLEET_UPDATE_EVENT, ADDRESSES_UPDATES_INBOX, ADDRESS_UPDATE_EVENT, MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD
-} from "../constants.js";
+} from '../constants.js';
 import { generateId, sleep } from '../utils/helper.functions.js';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
 import EventEmitter2 from 'eventemitter2';

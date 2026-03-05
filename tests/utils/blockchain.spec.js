@@ -1,7 +1,5 @@
 import { beforeAll, describe, expect, test } from '@jest/globals';
 import { NaeuralBC } from '../../src/utils/blockchain.js';
-import { Buffer} from 'node:buffer';
-import * as crypto from 'crypto';
 
 
 describe('NaeuralEdgeProtocol Blockchain Tests', () => {
@@ -93,7 +91,7 @@ describe('NaeuralEdgeProtocol Blockchain Tests', () => {
         expect(decryptedData).toEqual(data);
     });
 
-    xtest('decrypt', () => {
+    test.skip('decrypt', () => {
         // EE_IS_ENCRYPTED instead of EE_ENCRYPTED_DATA
         // EE_ENCRYPTED_DATA instead of ENCRYPTED_DATA
         const encryptedMessage = `{

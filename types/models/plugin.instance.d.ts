@@ -1,12 +1,8 @@
-import {Pipeline} from "./pipeline";
-import {SchemaDefinition} from "../utils/schema.providers";
-import {NaeuralCommand, NaeuralUpdateInstanceConfig} from "../constants";
-
-export const ID_TAGS="ID_TAGS";
-export const WORKING_HOURS="WORKING_HOURS";
-export const WORKING_HOURS_TIMEZONE="WORKING_HOURS_TIMEZONE";
-export const LINKED_INSTANCES="LINKED_INSTANCES";
-export const SINGLE_INSTANCE="SINGLE_INSTANCE";
+export const ID_TAGS: "ID_TAGS";
+export const WORKING_HOURS: "WORKING_HOURS";
+export const WORKING_HOURS_TIMEZONE: "WORKING_HOURS_TIMEZONE";
+export const LINKED_INSTANCES: "LINKED_INSTANCES";
+export const SINGLE_INSTANCE: "SINGLE_INSTANCE";
 export const reservedKeys: string[];
 /**
  * @class PluginInstance
@@ -33,6 +29,12 @@ export class PluginInstance {
     static make(setup: any, pipeline?: Pipeline | null): PluginInstance;
     /**
      * The PluginInstance constructor.
+     *
+     * @param {string} id
+     * @param {string} signature
+     * @param {*} config
+     * @param {SchemaDefinition} schema
+     * @param {boolean} dirty
      * @private
      */
     private constructor();
@@ -318,4 +320,15 @@ export class PluginInstance {
      * @return {NaeuralCommand}
      */
     getRawInstanceCommandPayload(command: any): NaeuralCommand;
+    /**
+     * Validates the structure and content of the schedule object.
+     * For separate schedules, ensures each key is a valid day and each value is an array of time intervals.
+     * For a single schedule for all days, ensures it's an array of time intervals.
+     * Time intervals should be in the format ["HH:MM", "HH:MM"].
+     *
+     * @private
+     * @param {Object|Array} schedule - The schedule to validate.
+     * @returns {boolean} True if the schedule is valid, otherwise throws an Error.
+     */
+    private _validateSchedule;
 }

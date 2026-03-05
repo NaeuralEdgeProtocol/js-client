@@ -1,4 +1,4 @@
-export function getRedisConnection(connectionOptions: RedisConnectionOptions): Redis;
+export function getRedisConnection(options: any, logger: any, alias: any): Redis;
 export type RedisConnectionOptions = {
     pubSubChannel: string;
     host: string;

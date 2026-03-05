@@ -135,7 +135,7 @@ export const NaeuralEvent = {
     NAEURAL_ENGINE_OFFLINE: '0xai_EEOFF',
 };
 
-const COMMS_DIAGNOSTIC_WINDOW_MS = 60_000;
+const COMMS_DIAGNOSTIC_WINDOW_MS = 120_000;
 
 /**
  * @extends EventEmitter2

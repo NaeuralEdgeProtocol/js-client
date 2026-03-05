@@ -1,5 +1,3 @@
-import {AllowedValues, SchemaDefinition} from "./schema.providers";
-
 export function encode(code: string): Promise<string>;
 export function decode(value: string): Promise<string>;
 export function camelToNaeuralFormat(input: string): string;

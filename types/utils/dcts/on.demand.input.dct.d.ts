@@ -1,5 +1,3 @@
-import {SchemaDefinition} from "../schema.providers";
-
 export const DCT_TYPE_ON_DEMAND_INPUT: "OnDemandInput";
 /**
  * The VideoFile schema definition.

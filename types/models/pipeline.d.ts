@@ -1,5 +1,3 @@
-import { Naeural } from "../client";
-
 /**
  * @class Pipeline
  *
@@ -23,6 +21,12 @@ export class Pipeline {
     static make(client: Naeural, node: string, config: any, schemas: SchemasRepository, dirty?: boolean): Pipeline;
     /**
      * The Pipeline model constructor.
+     *
+     * @param {string} initiator
+     * @param {string} node
+     * @param {string} name
+     * @param {DataCaptureThread} dct
+     * @param {Naeural} client
      * @private
      */
     private constructor();
@@ -116,11 +120,6 @@ export class Pipeline {
      * @return {DataCaptureThread|null}
      */
     getDataCaptureThread(): DataCaptureThread | null;
-    /**
-     * Update configuration for the pipeline.
-     *
-     * @param update
-     */
     updateConfig(update: any): this;
     /**
      * Returns the metadata set on this pipeline.
@@ -168,7 +167,14 @@ export class Pipeline {
      * @return {Promise<*>}
      */
     sendCommand(command: any): Promise<any>;
+    /**
+     * Returns the Edge Node command wrapping the Pipeline command.
+     *
+     * @param {Object} command
+     * @return {NaeuralCommand}
+     * @private
+     */
+    private _getRawPipelineCommandPayload;
 }
 import { PluginInstance } from './plugin.instance.js';
 import { DataCaptureThread } from './data.capture.thread.js';
-import { SchemasRepository } from "../utils/schema.providers";

@@ -121,7 +121,7 @@ describe('Data Capture Thread Model Tests', () => {
                 DataCaptureThread.make(invalidConfig, stats, schema);
             } catch (e) {
                 expect(e.message).toEqual(
-                    "Mandatory fields are missing from the DCT configuration. Couldn't properly instantiate.",
+                    'Mandatory fields are missing from the DCT configuration. Couldn\'t properly instantiate.',
                 );
             }
         });

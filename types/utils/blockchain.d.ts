@@ -1,4 +1,5 @@
 /// <reference types="node" />
+/// <reference types="node" />
 /**
  * @typedef {Object} NaeuralBlockchainOptions
  * @property {boolean} [debug] - Indicates if debugging is enabled.
@@ -38,15 +39,40 @@ export class NaeuralBC {
     static loadFromSecretWords(words: any): crypto.KeyObject;
     static loadFromPem(pem: any): crypto.KeyObject;
     /**
+     * Removes the prefix from the address.
+     *
+     * @param {string} address
+     * @return {string}
+     * @private
+     */
+    private static _removeAddressPrefix;
+    /**
      * NaeuralEdgeProtocol Network Blockchain engine constructor.
      *
      * @param {NaeuralBlockchainOptions} options
      */
     constructor(options: NaeuralBlockchainOptions);
     /**
-     * Loads a Naeural Identity into the current working session.
-     * @param identityPrivateKey
+     * The keypair that is in use.
+     *
+     * @type {{privateKey: crypto.KeyObject, publicKey: crypto.KeyObject}}
+     * @private
      */
+    private keyPair;
+    /**
+     * A handy cache for the public key.
+     *
+     * @type {string}
+     * @private
+     */
+    private compressedPublicKey;
+    /**
+     * Flag to boot the engine in debug mode. Will output signature verification logs.
+     *
+     * @type {boolean}
+     * @private
+     */
+    private debugMode;
     loadIdentity(identityPrivateKey: any): boolean;
     /**
      * Returns the public key as a string.
@@ -60,9 +86,6 @@ export class NaeuralBC {
      * @return {string} the NaeuralEdgeProtocol Network Address
      */
     getAddress(): string;
-    /**
-     * Exports loaded identity as PEM file.
-     */
     exportAsPem(): string | Buffer;
     /**
      * Returns the signed input object with all the cryptographical metadata appended to it. The format can be either
@@ -82,6 +105,46 @@ export class NaeuralBC {
     verify(fullJSONMessage: string): boolean;
     encrypt(message: any, destinationAddress: any): string;
     decrypt(encryptedDataB64: any, sourceAddress: any): string;
+    /**
+     * @return {crypto.KeyObject}
+     * @private
+     */
+    private _getPrivateKey;
+    /**
+     * Returns the hash for a provided input. Inputs can be either a string or an object. Any other datatype will
+     * throw an error.
+     *
+     * @param input
+     * @return {{strHash: string, binHash: *}}
+     * @private
+     */
+    private _getHash;
+    /**
+     * Generates the signature for the provided hash.
+     *
+     * @param {Buffer} binHash the hash to sign
+     * @return {string} the signature for the provided hash
+     * @private
+     */
+    private _signHash;
+    /**
+     * Generates and applies all the signatures and hashes to the input object. The format can be either
+     * `json` or `object` and it allows the caller to select the format of the returned value.
+     *
+     * @param input
+     * @param {string} signatureB64 the signature
+     * @param {string} format the format to return
+     * @return {object|string} the original object with signature properties appended
+     * @private
+     */
+    private _prepareMessage;
+    /**
+     *
+     * @param peerPublicKey
+     * @return {*}
+     * @private
+     */
+    private _deriveSharedKey;
 }
 export type NaeuralBlockchainOptions = {
     /**

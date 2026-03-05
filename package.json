@@ -1,8 +1,15 @@
 {
-  "name": "@naeural/jsclient",
-  "version": "3.1.10",
-  "description": "This is the Javascript client for the NaeuralEdgeProtocol network.",
+  "name": "@hyfy/jsclient",
+  "version": "3.1.16",
+  "description": "This is the JS client for custom server-side access of R1 Edge Node fleets",
   "type": "module",
+  "files": [
+    "src/",
+    "types/",
+    "README.md",
+    "LICENSE",
+    "API.md"
+  ],
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
   "scripts": {
@@ -17,7 +24,7 @@
   },
   "author": "NaeuralEdgeProtocol Team",
   "bin": {
-    "naeural": "./src/cli.js"
+    "naeural": "src/cli.js"
   },
   "contributors": [
     "Radu Lupaescu <radu.lupaescu@gmail.com>"
@@ -29,7 +36,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com:NaeuralEdgeProtocol/js-client.git"
+    "url": "git+https://github.com/NaeuralEdgeProtocol/js-client.git"
   },
   "keywords": [
     "NaeuralEdgeProtocol",
@@ -88,5 +95,8 @@
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

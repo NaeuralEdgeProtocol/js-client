@@ -256,7 +256,7 @@ export class NaeuralBC {
         this.keyPair = {
             privateKey: identityPrivateKey,
             publicKey,
-        }
+        };
 
         this.compressedPublicKey = NaeuralBC.compressPublicKeyObject(this.keyPair.publicKey);
 
@@ -294,7 +294,7 @@ export class NaeuralBC {
      * @return {string|any} the signed input
      */
     sign(input, format = 'json') {
-        const { binHash, strHash } = this._getHash(input);
+        const { binHash } = this._getHash(input);
         const signatureB64 = this._signHash(binHash);
 
         return this._prepareMessage(input, signatureB64, format);
@@ -347,10 +347,6 @@ export class NaeuralBC {
             const signatureBuffer = Buffer.from(urlSafeBase64ToBase64(signatureB64), 'base64');
             const publicKeyObj = NaeuralBC.addressToPublicKeyObject(pkB64);
 
-
-            const ecKeyPair = NaeuralBC.publicKeyObjectToECKeyPair(publicKeyObj);
-            const rehash = Buffer.from(crypto.createHash('sha256').update(hash).digest('hex'), 'hex');
-            const ver = ecKeyPair.verify([...rehash], [...signatureBuffer]); // Elliptic Curve verify
 
             signatureResult = crypto.verify(
                 null,

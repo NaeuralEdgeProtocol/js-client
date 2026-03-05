@@ -280,7 +280,7 @@ describe('Plugin Model Tests', () => {
                 PluginInstance.make(modifiedSetup, pipeline);
             } catch (e) {
                 expect(e.message).toEqual(
-                    "Mandatory fields are missing from the plugin instance configuration. Couldn't properly instantiate.",
+                    'Mandatory fields are missing from the plugin instance configuration. Couldn\'t properly instantiate.',
                 );
             }
         });

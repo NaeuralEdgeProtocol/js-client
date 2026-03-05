@@ -1,7 +1,3 @@
-import { Naeural } from "./client";
-import { Logger } from "./app.logger";
-import { NaeuralUpdateInstanceConfig } from "./constants";
-
 /**
  * @class NodeManager
  *
@@ -71,6 +67,13 @@ export class NodeManager {
      * @private
      */
     private node;
+    /**
+     * The node name this manager is attached to.
+     *
+     * @type {string}
+     * @private
+     */
+    private nodeName;
     /**
      * The list of open Pipelines on this node.
      *

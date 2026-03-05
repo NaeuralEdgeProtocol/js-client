@@ -1,5 +1,3 @@
-import {SchemaDefinition} from "../utils/schema.providers";
-
 /**
  * @class DataCaptureThread
  *
@@ -26,6 +24,12 @@ export class DataCaptureThread {
     static make(candidateConfig: any, stats?: any, schema?: SchemaDefinition | null, dirty?: boolean): DataCaptureThread;
     /**
      * Private constructor. Use the `make()` method for creating new instances of DCTs.
+     *
+     * @constructor
+     * @param config
+     * @param {SchemaDefinition} schema
+     * @param dirty
+     * @private
      */
     private constructor();
     /**

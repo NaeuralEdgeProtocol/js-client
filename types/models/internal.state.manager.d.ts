@@ -1,5 +1,3 @@
-import {Logger} from "../app.logger";
-
 /**
  * @extends EventEmitter2
  *
@@ -123,4 +121,3 @@ export class InternalStateManager extends EventEmitter2 {
     registerThread(threadType: string, thread: any): InternalStateManager;
 }
 import EventEmitter2 from 'eventemitter2';
-import {ObservedNodes} from "./state";

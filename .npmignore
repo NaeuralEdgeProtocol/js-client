@@ -12,3 +12,8 @@ AGENTS.md
 TODO.md
 CHANGE_LOG.md
 naeural-jsclient-*.tgz
+hyfy-jsclient-*.tgz
+*.tgz
+tests/
+docs/
+.github/

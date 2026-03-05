@@ -9,7 +9,7 @@ import {
     TIMEOUT_MAX_REQUEST_TIME,
     TIMEOUT_TO_FIRST_RESPONSE,
     UNKNOWN_STATE_MANAGER
-} from "../constants.js";
+} from '../constants.js';
 import {hasFleetFilter, isAddress} from '../utils/helper.functions.js';
 import { NetworkRequestsHandler } from './network.requests.handler.js';
 import EventEmitter2 from 'eventemitter2';

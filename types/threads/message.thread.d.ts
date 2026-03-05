@@ -139,6 +139,17 @@ export class Thread extends EventEmitter2 {
         decodeError: number;
         supervisorAdminSeen: number;
         supervisorNetMonSeen: number;
+        netMonCandidateSeen: number;
+        netMonDropSignature: number;
+        netMonDropParse: number;
+        netMonDropFleet: number;
+        netMonDropFormatter: number;
+        netMonDropDecode: number;
+        netMonDecodePass: number;
+        netMonSupervisorSeen: number;
+        netMonCurrentNetworkMissing: number;
+        netMonCurrentNetworkMalformed: number;
+        netMonSignaturePathMismatch: number;
         funnelException: number;
         postedToMainByType: {};
         postedToRedisByType: {};

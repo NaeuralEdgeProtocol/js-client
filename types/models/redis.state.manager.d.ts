@@ -1,12 +1,47 @@
-import {ObservedNodes} from "./state";
-
 /**
  * @class RedisStateManager
  *
  * This is the implementation of the state manager leveraging Redis as state storage. This is the manager to be used
- * when a multi-process instance of the SDK is needed.
+ * when a multiprocess instance of the SDK is needed.
  */
 export class RedisStateManager extends EventEmitter2 {
+    /**
+     * Returns the cache key based on the provided `node` name.
+     *
+     * @param {string} node
+     * @return {string}
+     * @private
+     */
+    private static _getRedisHeartbeatKey;
+    /**
+     * Returns the cache key name and lock name for the observed universe storage.
+     *
+     * @return {string[]}
+     * @private
+     */
+    private static _getRedisUniverseKeyAndLock;
+    /**
+     * Returns the cache key name and lock name for the observed universe addresses storage.
+     *
+     * @return {string[]}
+     * @private
+     */
+    private static _getRedisUniverseAddressesKeyAndLock;
+    /**
+     * Returns the cache key and lock name for the list of observed network supervisors.
+     *
+     * @return {string[]}
+     * @private
+     */
+    private static _getObservedSupervisorsKeyAndLock;
+    /**
+     * Returns the cache key and lock name for reading and updating information received from a specific `supervisor`.
+     *
+     * @param {string} supervisor
+     * @return {string[]}
+     * @private
+     */
+    private static _getSupervisorKeyAndLock;
     /**
      * The RedisStateManager constructor.
      *
@@ -14,6 +49,48 @@ export class RedisStateManager extends EventEmitter2 {
      * @param {Logger} logger
      */
     constructor(redisOptions: any, logger: Logger);
+    /**
+     * The `inboxId` to be read for messages received from other state managers/worker threads.
+     *
+     * @type {string|null}
+     * @private
+     */
+    private inboxId;
+    /**
+     * The Redis handler for performing cache updates and reads.
+     *
+     * @type {Redis|null}
+     * @private
+     */
+    private cache;
+    /**
+     * The Redis subscription channel for publishing updates to other state managers.
+     *
+     * @type {Redis|null}
+     * @private
+     */
+    private publishChannel;
+    /**
+     * The Redis subscription channel for receiving updates from other state managers.
+     *
+     * @type {Redis|null}
+     * @private
+     */
+    private subscriptionChannel;
+    /**
+     * The channel to subscribe to.
+     *
+     * @type {string|null}
+     * @private
+     */
+    private pubSubChannel;
+    /**
+     * Logger handler.
+     *
+     * @type {Logger}
+     * @private
+     */
+    private logger;
     /**
      * Broadcasts working fleet to all subscribed threads.
      *
@@ -100,6 +177,24 @@ export class RedisStateManager extends EventEmitter2 {
      * @return {Promise<boolean>}
      */
     markSupervisor(supervisor: string): Promise<boolean>;
+    /**
+     * Attempts to acquire the `lock`.
+     *
+     * @param lock
+     * @return {Promise<boolean>}
+     * @private
+     */
+    private _acquireLock;
+    /**
+     * Waits for aquiring the `lock` for a specified amount of time defined by the `retryInterval` and number of
+     * `maxRetries`.
+     *
+     * @param {string} lock
+     * @param {number} retryInterval
+     * @param {number} maxRetries
+     * @return {Promise<boolean>}
+     * @private
+     */
+    private _waitForLock;
 }
 import EventEmitter2 from 'eventemitter2';
-import {Logger} from "../app.logger";

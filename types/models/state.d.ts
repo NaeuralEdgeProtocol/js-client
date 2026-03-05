@@ -4,7 +4,6 @@
 /**
  * @typedef {{name: string, status: { online: boolean, lastSeen: Date}}} NodeStatus
  */
-import { NetworkRequest, NetworkRequestsHandler } from "./network.requests.handler";
 /**
  * @extends EventEmitter2
  *
@@ -18,8 +17,43 @@ export class State extends EventEmitter2 {
      * @param {string} type
      * @param {InternalStateManager|RedisStateManager} manager
      * @param {Object} options
+     * @param {Logger} logger
      */
-    constructor(type: string, manager: InternalStateManager | RedisStateManager, options: any);
+    constructor(type: string, manager: InternalStateManager | RedisStateManager, options: any, logger: Logger);
+    /**
+     * The type of manager to use. It can be either INTERNAL_STATE_MANAGER or REDIS_STATE_MANAGER.
+     *
+     * @type {string}
+     * @private
+     */
+    private type;
+    /**
+     * The state manager to use for storing and applying state operations.
+     *
+     * @type {RedisStateManager|InternalStateManager}
+     * @private
+     */
+    private manager;
+    /**
+     * The fleet to follow.
+     *
+     * @type {string[]}
+     * @private
+     */
+    private fleet;
+    /**
+     * The open network transactions handler.
+     *
+     * @type {NetworkRequestsHandler}
+     * @private
+     */
+    private networkRequestsHandler;
+    addressToNodeName: {};
+    nodeNameToAddress: {};
+    /**
+     * {Logger} logger
+     */
+    logger: Logger;
     /**
      * Method for storing the processed heartbeat into the state.
      *
@@ -34,6 +68,13 @@ export class State extends EventEmitter2 {
      * @param {Object} message
      */
     onRequestResponseNotification(self: State, message: any): void;
+    /**
+     *
+     * @param eventData
+     * @private
+     */
+    private _onRemoteFleetUpdateReceived;
+    onAddressesUpdateReceived(eventData: any): void;
     /**
      * A method that returns all the nodes observed from the heartbeat stream with the observation timestamps.
      *
@@ -146,6 +187,20 @@ export class State extends EventEmitter2 {
      * @return {string|null}
      */
     getNodeForAddress(address: string): string | null;
+    /**
+     *
+     * @param message
+     * @private
+     */
+    private _refreshAddresses;
+    /**
+     * Returns the address for a given node name. Returns null if node has not been observed.
+     *
+     * @param {string} node
+     * @return {string|null}
+     * @private
+     */
+    private _getAddressForNode;
 }
 export type ObservedNodes = {
     [x: string]: number;
@@ -158,5 +213,3 @@ export type NodeStatus = {
     };
 };
 import EventEmitter2 from 'eventemitter2';
-import { InternalStateManager } from './internal.state.manager.js';
-import { RedisStateManager } from './redis.state.manager.js';

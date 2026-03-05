@@ -59,4 +59,13 @@ export class Logger {
      * @return {string}
      */
     getLevel(): string;
+    /**
+     * Internal method that formats and outputs the logged message.
+     *
+     * @param {string|number} level
+     * @param {string} message
+     * @param {Object} stackTrace
+     * @private
+     */
+    private _print;
 }
