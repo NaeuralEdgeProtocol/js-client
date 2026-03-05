@@ -1,4 +1,4 @@
-# @naeural/jsclient
+# @hyfy/jsclient
 
 JavaScript/TypeScript SDK for interacting with the NaeuralEdgeProtocol network.
 
@@ -15,7 +15,7 @@ This repository contains the runtime client, node/pipeline management API, block
 ## Installation
 
 ```bash
-npm install @naeural/jsclient
+npm install @hyfy/jsclient
 ```
 
 ## Runtime Requirements
@@ -26,7 +26,7 @@ npm install @naeural/jsclient
 
 ## Public API (Top-Level Exports)
 
-From `@naeural/jsclient`:
+From `@hyfy/jsclient`:
 
 - `Naeural`, `NaeuralEvent`, `NaeuralEventType`
 - `NodeManager`, `Pipeline`, `PluginInstance`
@@ -44,7 +44,7 @@ import {
   NaeuralEventType,
   ALL_EDGE_NODES,
   INTERNAL_STATE_MANAGER
-} from '@naeural/jsclient';
+} from '@hyfy/jsclient';
 
 const client = new Naeural({
   initiator: 'my-app',
@@ -188,7 +188,7 @@ Typical flow:
 Example:
 
 ```js
-import { DCT_TYPE_VIDEO_STREAM } from '@naeural/jsclient';
+import { DCT_TYPE_VIDEO_STREAM } from '@hyfy/jsclient';
 
 const pipeline = await manager.createPipeline(
   {
@@ -235,7 +235,7 @@ client.registerPluginSchema('MY_PLUGIN_SIGNATURE', mySchema);
 CLI key generation:
 
 ```bash
-npx @naeural/jsclient generate ./identity.json
+npx @hyfy/jsclient generate ./identity.json
 ```
 
 This command prints and optionally writes:

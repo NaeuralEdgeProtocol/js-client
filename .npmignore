@@ -1,7 +1,7 @@
 coverage/
 custom/
 /scripts/
-docs/jsdoc/@naeural/jsclient/*/scripts/
+docs/jsdoc/@hyfy/jsclient/*/scripts/
 .idea/
 .env
 .DS_Store

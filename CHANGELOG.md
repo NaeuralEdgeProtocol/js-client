@@ -2,6 +2,39 @@
 
 ## [Unreleased] - 2026-03-04
 
+## [4.0.0] - 2026-03-05
+
+### Breaking Changes
+
+- Package namespace changed from `@naeural/jsclient` to `@hyfy/jsclient`.
+- This is a semver-major release because dependency coordinates changed for all consumers.
+
+### Migration Notes
+
+#### Simple Explanation
+
+- If your project still installs or imports `@naeural/jsclient`, it will no longer resolve after upgrading.
+- Replace the package name with `@hyfy/jsclient` everywhere, reinstall, and keep using the same API.
+
+#### Technical Migration Checklist
+
+1. Update dependency declarations.
+   - `npm uninstall @naeural/jsclient`
+   - `npm install @hyfy/jsclient@^4`
+2. Update all imports/requires.
+   - `import { Naeural } from '@naeural/jsclient'` -> `import { Naeural } from '@hyfy/jsclient'`
+   - `const { Naeural } = require('@naeural/jsclient')` -> `const { Naeural } = require('@hyfy/jsclient')`
+3. Update CI/release scripts and docs references.
+   - `npm view @naeural/jsclient` -> `npm view @hyfy/jsclient`
+   - `npm pack @naeural/jsclient` -> `npm pack @hyfy/jsclient`
+4. Regenerate lockfiles in consuming projects to avoid stale resolved package names.
+5. Validate runtime by running your normal smoke tests for connect, subscribe, and signature verification flows.
+
+### Compatibility Notes
+
+- Runtime behavior and public API remain unchanged in this release; the breaking surface is package identity and ecosystem references.
+- CLI command name remains `naeural`.
+
 ### Fixed (Dual Signature Canonicalization Compatibility)
 
 - Updated `src/utils/blockchain.js::verify()` to support two strict hash canonicalization strategies before signature acceptance:
@@ -120,7 +153,7 @@ Think of it as two people reading the same table of values, but one writes `0.0`
 - Added `TODO.md` with prioritized fixes discovered during repository review (including automated npm publish on version change).
 - Added `CHANGELOG.md` (this file).
 
-### Synced With Published npm Package (`@naeural/jsclient@3.1.6`)
+### Synced With Published npm Package (`@hyfy/jsclient@3.1.6`)
 
 - Updated `package.json` version to `3.1.6`.
 - Updated `package-lock.json` root/package versions to `3.1.6`.
