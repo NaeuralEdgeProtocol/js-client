@@ -4,9 +4,11 @@ import {
     ALL_EDGE_NODES,
     INTERNAL_STATE_MANAGER,
     MESSAGE_TYPE_PAYLOAD,
+    THREAD_COMMAND_MEMORY_USAGE,
+    THREAD_COMMAND_UPDATE_STATE,
     THREAD_TYPE_PAYLOADS,
 } from '../../src/constants.js';
-import { Thread } from '../../src/threads/message.thread.js';
+import { Thread, forwardCommandToThread } from '../../src/threads/message.thread.js';
 
 const makeLogger = () => ({
     setThreadId: jest.fn(),
@@ -229,5 +231,44 @@ describe('Message Thread Comms Diagnostics', () => {
         expect(thread.commsCounterWindow.signatureBypassOnError).toBe(1);
         expect(thread.commsCounterWindow.bypassReasons.signature_exception_insecure_bypass).toBe(1);
         expect(thread.commsCounterWindow.dropReasons.signature_exception).toBeUndefined();
+    });
+});
+
+describe('Worker command forwarding', () => {
+    test('does not throw if command is received before worker thread start', () => {
+        const logger = makeLogger();
+
+        expect(() => {
+            forwardCommandToThread(null, THREAD_COMMAND_MEMORY_USAGE, { command: THREAD_COMMAND_MEMORY_USAGE }, logger);
+        }).not.toThrow();
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            'Ignoring command "THREAD_COMMAND_MEMORY_USAGE" because worker thread is not initialized yet.',
+        );
+    });
+
+    test('forwards memory usage command without payload argument', () => {
+        const logger = makeLogger();
+        const threadInstance = { do: jest.fn() };
+
+        forwardCommandToThread(threadInstance, THREAD_COMMAND_MEMORY_USAGE, { command: THREAD_COMMAND_MEMORY_USAGE }, logger);
+
+        expect(threadInstance.do).toHaveBeenCalledWith(THREAD_COMMAND_MEMORY_USAGE);
+    });
+
+    test('forwards state update command with original message payload', () => {
+        const logger = makeLogger();
+        const threadInstance = { do: jest.fn() };
+        const message = {
+            command: THREAD_COMMAND_UPDATE_STATE,
+            address: '0xai_test',
+            state: {
+                pipelines: {},
+            },
+        };
+
+        forwardCommandToThread(threadInstance, THREAD_COMMAND_UPDATE_STATE, message, logger);
+
+        expect(threadInstance.do).toHaveBeenCalledWith(THREAD_COMMAND_UPDATE_STATE, message);
     });
 });

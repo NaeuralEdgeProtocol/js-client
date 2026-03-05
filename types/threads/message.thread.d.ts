@@ -235,6 +235,7 @@ export class Thread extends EventEmitter2 {
      */
     private _getAddressForNode;
 }
+export function forwardCommandToThread(threadInstance: any, command: any, message: any, threadLogger: any): void;
 import EventEmitter2 from 'eventemitter2';
 import * as mqtt from 'mqtt';
 import { NaeuralBC } from '../utils/blockchain.js';

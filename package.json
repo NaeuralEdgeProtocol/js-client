@@ -1,6 +1,6 @@
 {
   "name": "@hyfy/jsclient",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "This is the JS client for custom server-side access of R1 Edge Node fleets",
   "type": "module",
   "files": [

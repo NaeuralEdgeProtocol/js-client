@@ -2,6 +2,11 @@
 
 ## [Unreleased] - 2026-03-04
 
+### Fixed
+
+- Hardened worker command forwarding in `src/threads/message.thread.js` to ignore non-start commands received before `THREAD_COMMAND_START`, preventing uncaught `thread.do(...)` null dereference crashes.
+- Added regression coverage in `tests/threads/message.thread.spec.js` for command forwarding behavior when worker thread state is uninitialized.
+
 ## [4.0.0] - 2026-03-05
 
 ### Breaking Changes

@@ -1574,11 +1574,31 @@ export class Thread extends EventEmitter2 {
     }
 }
 
+export const forwardCommandToThread = (threadInstance, command, message, threadLogger) => {
+    if (!threadInstance) {
+        threadLogger.warn(`Ignoring command "${command}" because worker thread is not initialized yet.`);
+        return;
+    }
+
+    if (command === THREAD_COMMAND_MEMORY_USAGE) {
+        threadInstance.do(THREAD_COMMAND_MEMORY_USAGE);
+        return;
+    }
+
+    threadInstance.do(command, message);
+};
+
 let thread = null;
 parentPort?.on('message', (message) => {
     logger.verbose('Thread received message: ', message);
 
-    if (message.command === THREAD_COMMAND_START) {
+    const command = message?.command ?? null;
+    if (command === null) {
+        logger.warn('Ignoring worker command message without command.');
+        return;
+    }
+
+    if (command === THREAD_COMMAND_START) {
         const startupOptions = message.config;
 
         let redisOptions = null;
@@ -1602,25 +1622,16 @@ parentPort?.on('message', (message) => {
         logger.log(`Configured MQTT connection at "${startupOptions.connection.url}" with (clean=${JSON.stringify(mqttOptions.clean)};clientId=${mqttOptions.clientId})`);
 
         thread.run(mqttClient);
+        return;
     }
 
-    if (message.command === THREAD_COMMAND_UPDATE_STATE) {
-        thread.do(THREAD_COMMAND_UPDATE_STATE, message);
-    }
-
-    if (message.command === THREAD_COMMAND_UPDATE_FLEET) {
-        thread.do(THREAD_COMMAND_UPDATE_FLEET, message);
-    }
-
-    if (message.command === THREAD_COMMAND_WATCH_FOR_SESSION_ID) {
-        thread.do(THREAD_COMMAND_WATCH_FOR_SESSION_ID, message);
-    }
-
-    if (message.command === THREAD_COMMAND_IGNORE_SESSION_ID) {
-        thread.do(THREAD_COMMAND_IGNORE_SESSION_ID, message);
-    }
-
-    if (message.command === THREAD_COMMAND_MEMORY_USAGE) {
-        thread.do(THREAD_COMMAND_MEMORY_USAGE);
+    if (
+        command === THREAD_COMMAND_UPDATE_STATE ||
+        command === THREAD_COMMAND_UPDATE_FLEET ||
+        command === THREAD_COMMAND_WATCH_FOR_SESSION_ID ||
+        command === THREAD_COMMAND_IGNORE_SESSION_ID ||
+        command === THREAD_COMMAND_MEMORY_USAGE
+    ) {
+        forwardCommandToThread(thread, command, message, logger);
     }
 });
