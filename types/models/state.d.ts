@@ -89,6 +89,64 @@ export class State extends EventEmitter2 {
      */
     getNodeInfo(node: any): Promise<any>;
     /**
+     * Pipeline commit fence pass-throughs.
+     *
+     * `NodeManager.commit()` reaches the fence through `client.state` — this
+     * facade — NOT through the underlying manager. These delegates (with the
+     * same node→address translation as `getNodeInfo`) are therefore
+     * load-bearing: without them the fence's capability probe would see
+     * missing methods and silently fall back to unfenced commits in every
+     * real deployment.
+     */
+    /**
+     * Capability probe for the pipeline commit fence. The facade always
+     * exposes the fence methods, so `NodeManager` must ask THIS method — which
+     * checks the wrapped manager — instead of probing method existence, or a
+     * custom manager without fence APIs would crash mid-commit rather than
+     * taking the documented legacy (unfenced) fallback.
+     *
+     * @return {boolean}
+     */
+    supportsCommitFence(): boolean;
+    /**
+     * Acquires the per-node commit fence lock on the wrapped manager.
+     *
+     * @param {string} node
+     * @return {Promise<string|null>} Owner token when acquired, else null.
+     */
+    acquireNodeCommitLock(node: string): Promise<string | null>;
+    /**
+     * Releases the per-node commit fence lock owned by `token`.
+     *
+     * @param {string} node
+     * @param {string} token
+     * @return {Promise<void>}
+     */
+    releaseNodeCommitLock(node: string, token: string): Promise<void>;
+    /**
+     * Reads the pipeline commit fence marker.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @return {Promise<number|null>}
+     */
+    getPipelineCommitMarker(node: string, pipelineId: string): Promise<number | null>;
+    /**
+     * Writes the pipeline commit fence marker.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @param {number} timestampMs
+     * @return {Promise<boolean>}
+     */
+    setPipelineCommitMarker(node: string, pipelineId: string, timestampMs: number): Promise<boolean>;
+    /**
+     * Shared-clock time source for fence marker stamps.
+     *
+     * @return {Promise<number>}
+     */
+    getServerTimeMs(): Promise<number>;
+    /**
      * Returns the configuration of a specific pipeline running on the requested node.
      *
      * @param {string} node

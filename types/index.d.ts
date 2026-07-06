@@ -4,5 +4,6 @@ export * from "./utils/dcts/index.js";
 export { NodeManager } from "./node.manager.js";
 export { NaeuralBC } from "./utils/blockchain.js";
 export { Pipeline } from "./models/pipeline.js";
+export { StalePipelineViewError } from "./models/errors.js";
 export { convertKeysToCamelFormat, convertKeysToNaeuralFormat } from "./utils/helper.functions.js";
 export { ID_TAGS, WORKING_HOURS, LINKED_INSTANCES, SINGLE_INSTANCE, reservedKeys, PluginInstance } from "./models/plugin.instance.js";

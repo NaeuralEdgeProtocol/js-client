@@ -13,3 +13,4 @@ export {
     reservedKeys,
     PluginInstance,
 } from './models/plugin.instance.js';
+export { StalePipelineViewError } from './models/errors.js';

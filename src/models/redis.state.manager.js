@@ -11,7 +11,8 @@ import {
     MESSAGE_TYPE_NETWORK_REQUEST_RESPONSE,
     NETWORK_STICKY_PAYLOAD_RECEIVED,
     FLEET_UPDATES_INBOX,
-    FLEET_UPDATE_EVENT, ADDRESSES_UPDATES_INBOX, ADDRESS_UPDATE_EVENT, MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD
+    FLEET_UPDATE_EVENT, ADDRESSES_UPDATES_INBOX, ADDRESS_UPDATE_EVENT, MESSAGE_TYPE_NETWORK_SUPERVISOR_PAYLOAD,
+    PIPELINE_COMMIT_MARKER_TTL,
 } from '../constants.js';
 import { generateId, sleep } from '../utils/helper.functions.js';
 import { getRedisConnection } from '../utils/redis.connection.provider.js';
@@ -453,6 +454,141 @@ export class RedisStateManager extends EventEmitter2 {
      */
     static _getRedisHeartbeatKey(node) {
         return `state:${node}:heartbeat`;
+    }
+
+    /**
+     * Returns the cache key holding the pipeline commit fence marker: the epoch
+     * ms of the last full `UPDATE_CONFIG` committed for `pipelineId` on `node`.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @return {string}
+     * @private
+     */
+    static _getRedisCommitMarkerKey(node, pipelineId) {
+        return `state:${node}:commit-marker:${pipelineId}`;
+    }
+
+    /**
+     * Returns the cache key used as the per-node commit fence lock.
+     *
+     * @param {string} node
+     * @return {string}
+     * @private
+     */
+    static _getRedisNodeCommitLockKey(node) {
+        return `state:${node}:commit-lock`;
+    }
+
+    /**
+     * Reads the pipeline commit fence marker for `(node, pipelineId)`.
+     *
+     * The marker records WHEN the pipeline's config was last committed. A
+     * heartbeat-derived view older than this marker must not publish a full
+     * `UPDATE_CONFIG` (it would revert the committed change). Markers expire
+     * after `PIPELINE_COMMIT_MARKER_TTL` so the fence fails open rather than
+     * wedging commits behind a crashed committer.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @return {Promise<number|null>} Epoch ms of the last commit, or null.
+     */
+    async getPipelineCommitMarker(node, pipelineId) {
+        const value = await this.cache.get(RedisStateManager._getRedisCommitMarkerKey(node, pipelineId));
+        const parsed = Number.parseInt(value, 10);
+
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    /**
+     * Writes the pipeline commit fence marker for `(node, pipelineId)`.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @param {number} timestampMs Epoch ms to record as the last-commit time.
+     * @return {Promise<boolean>}
+     */
+    async setPipelineCommitMarker(node, pipelineId, timestampMs) {
+        await this.cache.set(
+            RedisStateManager._getRedisCommitMarkerKey(node, pipelineId),
+            `${timestampMs}`,
+            'EX',
+            PIPELINE_COMMIT_MARKER_TTL,
+        );
+
+        return true;
+    }
+
+    /**
+     * Acquires the per-node commit fence lock, serializing the
+     * preflight → publish → mark critical section across all processes
+     * sharing this Redis. Owner-token semantics: unlike the legacy
+     * `_waitForLock`/`del` pair, release is compare-and-delete on a unique
+     * token, so a holder stalled past `REDIS_LOCK_EXPIRATION_TIME` (e.g. a
+     * Redis reconnect pause) can never delete a successor's lock and collapse
+     * the mutual exclusion. A crashed holder self-heals via the EX expiry.
+     *
+     * @param {string} node
+     * @return {Promise<string|null>} The owner token when acquired, else null.
+     */
+    async acquireNodeCommitLock(node) {
+        const key = RedisStateManager._getRedisNodeCommitLockKey(node);
+        const token = generateId();
+
+        let retries = 0;
+        while (retries < REDIS_LOCK_MAX_RETRIES) {
+            const result = await this.cache.set(key, token, 'EX', REDIS_LOCK_EXPIRATION_TIME, 'NX');
+            if (result === 'OK') {
+                return token;
+            }
+
+            await sleep(REDIS_LOCK_RETRY_INTERVAL);
+            retries++;
+        }
+
+        return null;
+    }
+
+    /**
+     * Releases the per-node commit fence lock if and only if this caller still
+     * owns it (Lua compare-and-delete on the owner token).
+     *
+     * @param {string} node
+     * @param {string} token Owner token returned by `acquireNodeCommitLock`.
+     * @return {Promise<void>}
+     */
+    async releaseNodeCommitLock(node, token) {
+        const script = 'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
+        try {
+            await this.cache.eval(script, 1, RedisStateManager._getRedisNodeCommitLockKey(node), `${token}`);
+        } catch (error) {
+            this.logger.warn(`[Redis State Manager] Commit lock release failed (expiry will self-heal). ${error.message}`);
+        }
+    }
+
+    /**
+     * Returns the Redis server time in epoch ms, falling back to the local
+     * clock when the TIME command is unavailable. This removes the
+     * COMMITTER's clock from fence marker stamps; heartbeat `lastUpdate`
+     * stamps still come from the receiving replica's wall clock, so residual
+     * replica-vs-Redis skew remains and is absorbed by
+     * `PIPELINE_COMMIT_APPLY_GRACE_MS` (see constants.js).
+     *
+     * @return {Promise<number>}
+     */
+    async getServerTimeMs() {
+        if (typeof this.cache.time === 'function') {
+            try {
+                // ioredis TIME → [seconds, microseconds] as strings.
+                const [seconds, micros] = await this.cache.time();
+
+                return Number.parseInt(seconds, 10) * 1000 + Math.floor(Number.parseInt(micros, 10) / 1000);
+            } catch (error) {
+                this.logger.warn(`[Redis State Manager] TIME unavailable, using local clock. ${error.message}`);
+            }
+        }
+
+        return new Date().getTime();
     }
 
     /**

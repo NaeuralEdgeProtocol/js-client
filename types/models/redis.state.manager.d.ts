@@ -14,6 +14,24 @@ export class RedisStateManager extends EventEmitter2 {
      */
     private static _getRedisHeartbeatKey;
     /**
+     * Returns the cache key holding the pipeline commit fence marker: the epoch
+     * ms of the last full `UPDATE_CONFIG` committed for `pipelineId` on `node`.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @return {string}
+     * @private
+     */
+    private static _getRedisCommitMarkerKey;
+    /**
+     * Returns the cache key used as the per-node commit fence lock.
+     *
+     * @param {string} node
+     * @return {string}
+     * @private
+     */
+    private static _getRedisNodeCommitLockKey;
+    /**
      * Returns the cache key name and lock name for the observed universe storage.
      *
      * @return {string[]}
@@ -196,5 +214,61 @@ export class RedisStateManager extends EventEmitter2 {
      * @private
      */
     private _waitForLock;
+    /**
+     * Reads the pipeline commit fence marker for `(node, pipelineId)`.
+     *
+     * The marker records WHEN the pipeline's config was last committed. A
+     * heartbeat-derived view older than this marker must not publish a full
+     * `UPDATE_CONFIG` (it would revert the committed change). Markers expire
+     * after `PIPELINE_COMMIT_MARKER_TTL` so the fence fails open rather than
+     * wedging commits behind a crashed committer.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @return {Promise<number|null>} Epoch ms of the last commit, or null.
+     */
+    getPipelineCommitMarker(node: string, pipelineId: string): Promise<number | null>;
+    /**
+     * Writes the pipeline commit fence marker for `(node, pipelineId)`.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @param {number} timestampMs Epoch ms to record as the last-commit time.
+     * @return {Promise<boolean>}
+     */
+    setPipelineCommitMarker(node: string, pipelineId: string, timestampMs: number): Promise<boolean>;
+    /**
+     * Acquires the per-node commit fence lock, serializing the
+     * preflight → publish → mark critical section across all processes
+     * sharing this Redis. Owner-token semantics: unlike the legacy
+     * `_waitForLock`/`del` pair, release is compare-and-delete on a unique
+     * token, so a holder stalled past `REDIS_LOCK_EXPIRATION_TIME` (e.g. a
+     * Redis reconnect pause) can never delete a successor's lock and collapse
+     * the mutual exclusion. A crashed holder self-heals via the EX expiry.
+     *
+     * @param {string} node
+     * @return {Promise<string|null>} The owner token when acquired, else null.
+     */
+    acquireNodeCommitLock(node: string): Promise<string | null>;
+    /**
+     * Releases the per-node commit fence lock if and only if this caller still
+     * owns it (Lua compare-and-delete on the owner token).
+     *
+     * @param {string} node
+     * @param {string} token Owner token returned by `acquireNodeCommitLock`.
+     * @return {Promise<void>}
+     */
+    releaseNodeCommitLock(node: string, token: string): Promise<void>;
+    /**
+     * Returns the Redis server time in epoch ms, falling back to the local
+     * clock when the TIME command is unavailable. This removes the
+     * COMMITTER's clock from fence marker stamps; heartbeat `lastUpdate`
+     * stamps still come from the receiving replica's wall clock, so residual
+     * replica-vs-Redis skew remains and is absorbed by
+     * `PIPELINE_COMMIT_APPLY_GRACE_MS` (see constants.js).
+     *
+     * @return {Promise<number>}
+     */
+    getServerTimeMs(): Promise<number>;
 }
 import EventEmitter2 from 'eventemitter2';

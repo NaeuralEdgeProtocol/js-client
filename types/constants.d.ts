@@ -120,6 +120,28 @@ export const ADDRESSES_UPDATES_INBOX: "address-updates";
 export const ADDRESS_UPDATE_EVENT: "address-update-event";
 export const FLEET_UPDATES_INBOX: "fleet-updates";
 export const FLEET_UPDATE_EVENT: "fleet-update-event";
+/**
+ * Pipeline commit fence tuning.
+ *
+ * The fence guards full-pipeline `UPDATE_CONFIG` commits: a commit compiled
+ * from a heartbeat view that does not clear the pipeline's last mutation
+ * marker plus the apply-grace window is refused (`StalePipelineViewError`).
+ *
+ * - `PIPELINE_COMMIT_MARKER_TTL` MUST exceed the heartbeat cache TTL (180 s in
+ *   `RedisStateManager`): a marker that dies before the cached heartbeat does
+ *   would let a stale view (basis age 120–180 s) publish completely unfenced.
+ *   After the TTL the fence fails open so a crashed committer can never wedge
+ *   the fleet; heartbeat convergence takes over.
+ * - `PIPELINE_COMMIT_APPLY_GRACE_MS` absorbs the window in which a heartbeat
+ *   GENERATED before the last commit applied on the edge node is RECEIVED
+ *   after the marker was written (apply lag + in-flight heartbeats), plus any
+ *   replica-vs-Redis clock skew (heartbeat `lastUpdate` stamps use the
+ *   receiving replica's wall clock; markers use Redis server time). The cost
+ *   is that derived full-config commits to a just-mutated pipeline are
+ *   refused for roughly one grace window.
+ */
+export const PIPELINE_COMMIT_MARKER_TTL: 300;
+export const PIPELINE_COMMIT_APPLY_GRACE_MS: 10000;
 export type NaeuralCommand = {
     /**
      * The action to be performed on the network node

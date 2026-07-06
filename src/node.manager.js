@@ -8,8 +8,10 @@ import {
     NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE,
     NODE_COMMAND_UPDATE_CONFIG,
     NODE_COMMAND_UPDATE_PIPELINE_INSTANCE, STICKY_COMMAND_ID_KEY,
+    PIPELINE_COMMIT_APPLY_GRACE_MS,
 } from './constants.js';
 import { PluginInstance } from './models/plugin.instance.js';
+import { StalePipelineViewError } from './models/errors.js';
 import {DCT_TYPE_VOID_STREAM} from './utils/dcts/index.js';
 import {CUSTOM_EXEC_01_SIGNATURE} from './utils/plugins/custom.exec.plugin.js';
 
@@ -19,6 +21,18 @@ import {CUSTOM_EXEC_01_SIGNATURE} from './utils/plugins/custom.exec.plugin.js';
  * The manager for all the node operations.
  */
 export class NodeManager {
+    /**
+     * Commit fence poison flag: set when this manager refused a stale commit
+     * (`StalePipelineViewError`). A poisoned manager rejects all further
+     * commits — its cached view is stale, and a blind retry loop would clobber
+     * the concurrent change once the fence marker TTL expires. Callers must
+     * rebuild via `getNodeManager()`.
+     *
+     * @type {boolean}
+     * @private
+     */
+    _fenceRefused = false;
+
     /**
      * The network client reference.
      *
@@ -340,6 +354,10 @@ export class NodeManager {
             this.client.schemas,
             true,
         );
+
+        // Authored here, not derived from a heartbeat: the commit fence must
+        // treat this pipeline's config as authoritative intent (see commit()).
+        pipeline._locallyAuthored = true;
 
         this.pipelines.push(pipeline);
 
@@ -687,6 +705,16 @@ export class NodeManager {
      * @return {Promise<Array<Object>>}
      */
     async commit() {
+        // A manager that refused a stale commit must not be retried: its cached
+        // view stays stale, and a blind retry loop would eventually clobber the
+        // concurrent change the moment the fence marker TTL expires.
+        if (this._fenceRefused === true) {
+            throw new Error(
+                `This NodeManager for ${this.node} previously refused a stale commit; ` +
+                    `build a fresh manager via getNodeManager() and reapply the changes on the fresh view.`,
+            );
+        }
+
         const runningPipelines = await this._getRunningPipelines();
         const messages = {};
 
@@ -707,8 +735,18 @@ export class NodeManager {
                 messages[NODE_COMMAND_UPDATE_CONFIG].push({
                     payload: NodeManager.compilePipelineUpdateConfig(pipeline),
                     watches: [...pipeline.getInstanceWatches()],
+                    // Fence metadata. `locallyAuthored` pipelines (createPipeline or
+                    // just-committed) carry authoritative intent and skip the
+                    // staleness check; hydrated pipelines carry their heartbeat
+                    // receive-time basis (missing basis → 0 → always-stale when a
+                    // marker exists: fail closed, never promote a derived snapshot
+                    // to authoritative). Watches are cleared only after a
+                    // successful publish so a refused commit keeps them intact.
+                    pipelineId: pipeline.id,
+                    viewBasisTs: pipeline._locallyAuthored ? null : pipeline._viewBasisTs ?? 0,
+                    locallyAuthored: pipeline._locallyAuthored === true,
+                    pipelineRef: pipeline,
                 });
-                pipeline.removeAllInstanceWatches();
             } else {
                 // some of the instances may have been reconfigured
                 const changeSet = await NodeManager.compilePipelineBatchUpdateInstances(pipeline);
@@ -720,8 +758,11 @@ export class NodeManager {
                     messages[NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE].push({
                         payload: changeSet,
                         watches: [...pipeline.getInstanceWatches()],
+                        // Batch deltas are exempt from the staleness check but must
+                        // still advance the fence marker (see the fence block below).
+                        pipelineId: pipeline.id,
+                        pipelineRef: pipeline,
                     });
-                    pipeline.removeAllInstanceWatches();
                 }
             }
         }
@@ -738,11 +779,16 @@ export class NodeManager {
         });
 
         const commands = [];
-        if (
-            messages[NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE] &&
-            messages[NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE].length > 0
-        ) {
-            const batchUpdates = messages[NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE].reduce(
+        const updateCommands = messages[NODE_COMMAND_UPDATE_CONFIG] ?? [];
+        const batchCommands = messages[NODE_COMMAND_BATCH_UPDATE_PIPELINE_INSTANCE] ?? [];
+        const archiveCommands = messages[NODE_COMMAND_ARCHIVE_CONFIG] ?? [];
+
+        // Pre-compile the aggregated batch message; publishing is deferred until
+        // the fence preflight has passed so a refused commit publishes NOTHING.
+        let batchMessage = null;
+        let batchWatches = [];
+        if (batchCommands.length > 0) {
+            const batchUpdates = batchCommands.reduce(
                 (aggregated, command) => {
                     aggregated.payload = aggregated.payload.concat(command.payload);
                     aggregated.watches = aggregated.watches.concat(command.watches);
@@ -759,34 +805,174 @@ export class NodeManager {
                 payload = payload[0];
             }
 
-            const message = {
+            batchMessage = {
                 ACTION: action,
                 PAYLOAD: payload,
             };
-
-            commands.push(this.client.publish(this.node, message, batchUpdates.watches));
+            batchWatches = batchUpdates.watches;
         }
 
-        if (messages[NODE_COMMAND_UPDATE_CONFIG] && messages[NODE_COMMAND_UPDATE_CONFIG].length > 0) {
-            messages[NODE_COMMAND_UPDATE_CONFIG].forEach((command) => {
-                const message = {
-                    ACTION: NODE_COMMAND_UPDATE_CONFIG,
-                    PAYLOAD: command.payload,
-                };
+        /**
+         * Publishes every prepared command (batch deltas, full configs,
+         * archives) and only then consumes the pipelines' instance watches —
+         * a refused commit must leave watches intact for the caller's retry
+         * on a rebuilt manager.
+         */
+        const publishAll = () => {
+            if (batchMessage) {
+                commands.push(this.client.publish(this.node, batchMessage, batchWatches));
+            }
 
-                commands.push(this.client.publish(this.node, message, command.watches));
-            });
+            for (const command of updateCommands) {
+                commands.push(
+                    this.client.publish(this.node, { ACTION: NODE_COMMAND_UPDATE_CONFIG, PAYLOAD: command.payload }, command.watches),
+                );
+            }
+
+            for (const command of archiveCommands) {
+                commands.push(this.client.publish(this.node, { ACTION: NODE_COMMAND_ARCHIVE_CONFIG, PAYLOAD: command.payload }));
+            }
+
+            [...updateCommands, ...batchCommands].forEach((command) => command.pipelineRef.removeAllInstanceWatches());
+        };
+
+        if (updateCommands.length === 0 && batchCommands.length === 0 && archiveCommands.length === 0) {
+            return Promise.all(commands);
         }
 
-        if (messages[NODE_COMMAND_ARCHIVE_CONFIG] && messages[NODE_COMMAND_ARCHIVE_CONFIG].length > 0) {
-            messages[NODE_COMMAND_ARCHIVE_CONFIG].forEach((command) => {
-                const message = {
-                    ACTION: NODE_COMMAND_ARCHIVE_CONFIG,
-                    PAYLOAD: command.payload,
-                };
+        /*
+         * Pipeline commit fence.
+         *
+         * Full `UPDATE_CONFIG` messages overwrite the ENTIRE pipeline config on
+         * the edge node. Views are hydrated from the last heartbeat, so a view
+         * built before another writer's commit — but published after it —
+         * silently reverts that commit (last-writer-wins corruption; S1 in the
+         * horizontal-scaling audit). The fence:
+         *   1. serializes preflight→publish→mark per node via a shared,
+         *      owner-token lock (short critical section — publishes are
+         *      enqueue-only, acks are awaited OUTSIDE the lock);
+         *   2. refuses full-config commits whose heartbeat basis is not newer
+         *      than the pipeline's last mutation marker plus an apply-grace
+         *      window (a heartbeat GENERATED before the last commit applied can
+         *      be RECEIVED after it — receive time alone is not proof the view
+         *      contains the committed config; the grace absorbs apply lag,
+         *      in-flight heartbeats, and clock skew). Refusal throws
+         *      StalePipelineViewError BEFORE anything is published and poisons
+         *      this manager (callers must rebuild via getNodeManager — retrying
+         *      the same stale view would clobber after the marker TTL expires);
+         *   3. writes a TTL-bounded marker for EVERY mutated pipeline — full
+         *      configs, batch instance deltas, and archives alike. Deltas and
+         *      archives are exempt from the staleness CHECK (they cannot clobber
+         *      a whole config) but must advance the fence, or a stale full
+         *      config could revert a delta / resurrect an archived pipeline.
+         * NOTE: this fence NARROWS the S1 window (to pathological heartbeat
+         * delays beyond the grace); the durable elimination is edge-side config
+         * versioning (audit fix option c). State managers without fence support
+         * (legacy 4.0.x replicas, custom managers) keep the previous unfenced
+         * behavior — mixed-version fleets are only fenced among upgraded
+         * replicas.
+         */
+        const state = this.client.state;
+        // Capability probe: prefer the explicit `supportsCommitFence()` (the
+        // `State` facade always EXPOSES the fence methods but may wrap a custom
+        // manager without them — method-existence probing alone would then
+        // crash mid-commit instead of taking the documented legacy fallback);
+        // fall back to method-existence for bare managers and legacy states.
+        const fenceSupported =
+            typeof state?.supportsCommitFence === 'function'
+                ? state.supportsCommitFence() === true
+                : typeof state?.acquireNodeCommitLock === 'function' &&
+                  typeof state?.releaseNodeCommitLock === 'function' &&
+                  typeof state?.getPipelineCommitMarker === 'function' &&
+                  typeof state?.setPipelineCommitMarker === 'function';
 
-                commands.push(this.client.publish(this.node, message));
+        if (!fenceSupported) {
+            publishAll();
+
+            return Promise.all(commands);
+        }
+
+        const lockToken = await state.acquireNodeCommitLock(this.node);
+        if (!lockToken) {
+            throw new Error(
+                `Could not acquire the pipeline commit fence lock for node ${this.node}; ` +
+                    `another configuration commit is in progress — retry shortly.`,
+            );
+        }
+
+        let publishesInitiated = false;
+        try {
+            // Preflight: every full-config staleness check runs BEFORE any
+            // publish, so a refused commit has initiated nothing at all.
+            for (const command of updateCommands) {
+                if (command.locallyAuthored) {
+                    // Authored-and-never-committed only (createPipeline). After
+                    // its first commit the flag is cleared and the own-marker
+                    // rule below takes over — authorship must never become an
+                    // unbounded bypass on a long-lived manager.
+                    continue;
+                }
+
+                const markerTs = await state.getPipelineCommitMarker(this.node, command.pipelineId);
+                if (markerTs === null) {
+                    continue;
+                }
+
+                // Own-marker rule: if the pipeline's last mutation marker is the
+                // one THIS manager wrote, its in-memory config already contains
+                // that mutation — back-to-back commits on the same manager pass.
+                // Any FOREIGN marker (another replica/manager committed since)
+                // must refuse: this manager's cached view cannot contain it.
+                if (markerTs === command.pipelineRef._ownMarkerTs) {
+                    continue;
+                }
+
+                if (command.viewBasisTs < markerTs + PIPELINE_COMMIT_APPLY_GRACE_MS) {
+                    this._fenceRefused = true;
+                    throw new StalePipelineViewError(this.node, command.pipelineId, markerTs, command.viewBasisTs);
+                }
+            }
+
+            const nowMs =
+                typeof state.getServerTimeMs === 'function' ? await state.getServerTimeMs() : new Date().getTime();
+
+            publishesInitiated = true;
+            publishAll();
+
+            // Markers are written at publish time (pessimistic): if an ack later
+            // fails, the marker TTL bounds the over-fencing window instead of
+            // risking an unmarked-but-applied commit being clobbered.
+            const mutatedPipelineIds = new Set([
+                ...updateCommands.map((command) => command.pipelineId),
+                ...batchCommands.map((command) => command.pipelineId),
+                ...archiveCommands.map((command) => command.payload),
+            ]);
+            for (const pipelineId of mutatedPipelineIds) {
+                await state.setPipelineCommitMarker(this.node, pipelineId, nowMs);
+            }
+
+            // Record which marker THIS manager wrote so back-to-back commits on
+            // the same manager pass the own-marker rule — while any foreign
+            // marker advance still refuses. Batch deltas count too: they advance
+            // the shared marker above, so omitting them would self-fence a
+            // batch-then-full sequence on the same manager. Authorship is
+            // cleared here: it only covers the created-but-never-committed
+            // window (an authored flag that survived commits would be an
+            // unbounded fence bypass on long-lived managers).
+            [...updateCommands, ...batchCommands].forEach((command) => {
+                command.pipelineRef._ownMarkerTs = nowMs;
+                command.pipelineRef._locallyAuthored = false;
             });
+        } catch (error) {
+            if (publishesInitiated) {
+                // In-flight publishes must not become unhandled rejections when
+                // commit() itself rejects (their acks resolve/reject later).
+                commands.forEach((command) => command.catch(() => {}));
+            }
+
+            throw error;
+        } finally {
+            await state.releaseNodeCommitLock(this.node, lockToken);
         }
 
         return Promise.all(commands);
@@ -803,11 +989,27 @@ export class NodeManager {
         const node = this.node;
 
         return client.state.getNodeInfo(node).then((nodeInfo) => {
+            // Fence view-basis: when this heartbeat was RECEIVED. Full-config
+            // commits compiled from these pipelines are only allowed if the
+            // basis clears the pipeline's last mutation marker plus the apply
+            // grace (see commit()). A hydrated view with a missing `lastUpdate`
+            // is normalized to basis 0 at commit time — always-stale whenever a
+            // marker exists (fail closed; a derived snapshot must never be
+            // silently promoted to authoritative intent).
+            const viewBasisTs = nodeInfo?.lastUpdate ?? null;
+
             return nodeInfo?.data?.pipelines
                 ? Object.keys(nodeInfo.data?.pipelines).map((pipelineId) => {
                       const pipelineConfig = nodeInfo.data?.pipelines[pipelineId];
 
-                      return Pipeline.make(client, node, pipelineConfig, client.schemas);
+                      const pipeline = Pipeline.make(client, node, pipelineConfig, client.schemas);
+                      // Heartbeat-derived pipelines carry their basis; locally
+                      // authored ones (createPipeline / just committed) carry the
+                      // `_locallyAuthored` flag instead and skip the staleness
+                      // check (authoritative intent).
+                      pipeline._viewBasisTs = viewBasisTs;
+
+                      return pipeline;
                   })
                 : [];
         });

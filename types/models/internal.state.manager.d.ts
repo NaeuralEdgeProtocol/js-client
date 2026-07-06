@@ -25,6 +25,17 @@ export class InternalStateManager extends EventEmitter2 {
      */
     private state;
     /**
+     * In-memory pipeline commit fence storage (single-process parity with
+     * `RedisStateManager`): `markers` maps `node:pipelineId` → `{ timestampMs,
+     * expiresAt }`; `locks` holds currently-held per-node commit locks. Even in
+     * one process, two concurrent operations on the same pipeline race the
+     * heartbeat window — the fence semantics stay identical.
+     *
+     * @type {{markers: Object, locks: Object}}
+     * @private
+     */
+    private commitFence;
+    /**
      * Handlers for the message processing threads.
      *
      * @type {Object}
@@ -82,6 +93,52 @@ export class InternalStateManager extends EventEmitter2 {
      * @return {Promise<Object>}
      */
     getNodeInfo(address: string): Promise<any>;
+    /**
+     * Reads the pipeline commit fence marker for `(node, pipelineId)`.
+     * In-memory parity of `RedisStateManager.getPipelineCommitMarker`; expired
+     * markers behave as absent (fail-open, mirrors the Redis TTL).
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @return {Promise<number|null>} Epoch ms of the last commit, or null.
+     */
+    getPipelineCommitMarker(node: string, pipelineId: string): Promise<number | null>;
+    /**
+     * Writes the pipeline commit fence marker for `(node, pipelineId)` with
+     * the same TTL semantics as the Redis implementation.
+     *
+     * @param {string} node
+     * @param {string} pipelineId
+     * @param {number} timestampMs
+     * @return {Promise<boolean>}
+     */
+    setPipelineCommitMarker(node: string, pipelineId: string, timestampMs: number): Promise<boolean>;
+    /**
+     * Acquires the per-node commit fence lock. Single-process, but with the
+     * same owner-token + expiry semantics as the Redis implementation: a
+     * holder whose release never runs frees the lock after
+     * `REDIS_LOCK_EXPIRATION_TIME`, and release is compare-and-delete on the
+     * token so a stale holder cannot free a successor's lock.
+     *
+     * @param {string} node
+     * @return {Promise<string|null>} The owner token when acquired, else null.
+     */
+    acquireNodeCommitLock(node: string): Promise<string | null>;
+    /**
+     * Releases the per-node commit fence lock if this caller still owns it.
+     *
+     * @param {string} node
+     * @param {string} token Owner token returned by `acquireNodeCommitLock`.
+     * @return {Promise<void>}
+     */
+    releaseNodeCommitLock(node: string, token: string): Promise<void>;
+    /**
+     * Local-clock time source (single process — no cross-replica skew to
+     * correct for). Parity with `RedisStateManager.getServerTimeMs`.
+     *
+     * @return {Promise<number>}
+     */
+    getServerTimeMs(): Promise<number>;
     /**
      * Will store the network snapshot as seen from a specific supervisor node.
      *

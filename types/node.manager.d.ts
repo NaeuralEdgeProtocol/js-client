@@ -47,6 +47,17 @@ export class NodeManager {
      */
     private constructor();
     /**
+     * Commit fence poison flag: set when this manager refused a stale commit
+     * (`StalePipelineViewError`). A poisoned manager rejects all further
+     * commits — its cached view is stale, and a blind retry loop would clobber
+     * the concurrent change once the fence marker TTL expires. Callers must
+     * rebuild via `getNodeManager()`.
+     *
+     * @type {boolean}
+     * @private
+     */
+    private _fenceRefused;
+    /**
      * The network client reference.
      *
      * @type {Naeural}
