@@ -711,7 +711,7 @@ export class NodeManager {
         if (this._fenceRefused === true) {
             throw new Error(
                 `This NodeManager for ${this.node} previously refused a stale commit; ` +
-                    `build a fresh manager via getNodeManager() and reapply the changes on the fresh view.`,
+                    'build a fresh manager via getNodeManager() and reapply the changes on the fresh view.',
             );
         }
 
@@ -896,7 +896,7 @@ export class NodeManager {
         if (!lockToken) {
             throw new Error(
                 `Could not acquire the pipeline commit fence lock for node ${this.node}; ` +
-                    `another configuration commit is in progress — retry shortly.`,
+                    'another configuration commit is in progress — retry shortly.',
             );
         }
 

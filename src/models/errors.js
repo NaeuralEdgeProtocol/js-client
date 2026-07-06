@@ -24,7 +24,7 @@ export class StalePipelineViewError extends Error {
         super(
             `Stale pipeline view for "${pipelineId}" on ${node}: the view was built from a heartbeat received at ` +
                 `${viewBasisTs} but the pipeline was last committed at ${markerTs}. Refusing the full config update ` +
-                `to avoid reverting the concurrent change; rebuild the view after the next heartbeat and retry.`,
+                'to avoid reverting the concurrent change; rebuild the view after the next heartbeat and retry.',
         );
 
         this.name = 'StalePipelineViewError';
