@@ -8,6 +8,4 @@ docs/jsdoc/@hyfy/jsclient/*/scripts/
 .vscode/
 dist/
 node_modules/
-PROMPT.md
-
 local_data/
