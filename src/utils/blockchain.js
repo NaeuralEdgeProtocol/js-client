@@ -48,6 +48,7 @@ const PKCS8 = asn1.define('PKCS8', function () {
  * @property {boolean} [debug] - Indicates if debugging is enabled.
  * @property {string} [key] - The key for the blockchain.
  * @property {boolean} [encrypt] - Indicates if encryption is enabled.
+ * @property {'legacy'|'flagged'} [encryptFormat] - Outgoing command-encryption wire layout: 'legacy' (default, historical [iv][ct][tag]) or 'flagged' (ratio1-python-parity [nonce][flag][zlib-ct+tag]); incoming decryption always tolerates both.
  * @property {boolean} [secure] - Indicates if the connection should be secure.
  */
 
@@ -482,8 +483,19 @@ export class NaeuralBC {
      * Layout detection relies on the AES-GCM auth tag: only the correct
      * parse authenticates (a cross-layout false positive has probability
      * 2^-128). The legacy parse is attempted first to keep the historical
-     * hot path unchanged; on auth failure the flagged parse runs. Returns
-     * `null` on any failure — same contract as before, never throws.
+     * hot path unchanged; on auth failure the flagged parse runs.
+     *
+     * Every decoded plaintext goes through STRICT (fatal) UTF-8 decoding,
+     * mirroring python's `.decode()`: the 1-byte compression flag sits
+     * OUTSIDE the GCM-authenticated data in the reference format, so a
+     * tampered flag (1 -> 0) leaves the tag valid while the plaintext bytes
+     * are still zlib-framed — permissive decoding would return authenticated
+     * mojibake, strict decoding rejects it to `null` exactly like the
+     * python SDK does.
+     *
+     * Returns `null` for any undecryptable, tampered, malformed, or
+     * non-UTF-8 envelope. Note: an invalid `sourceAddress` still throws
+     * (unchanged pre-existing behavior of the address parser).
      *
      * @param {string} encryptedDataB64 base64 encoded encrypted envelope
      * @param {string} sourceAddress sender node address (for ECDH)
@@ -496,6 +508,12 @@ export class NaeuralBC {
 
         const sourcePublicKey = NaeuralBC.addressToPublicKeyObject(sourceAddress);
         const encryptedData = Buffer.from(encryptedDataB64, 'base64');
+        // Minimum well-formed sizes: legacy = 12 iv + 0 ct + 16 tag = 28;
+        // anything shorter reaches OpenSSL with overlapping slices and a
+        // short "tag", triggering deprecation warnings before failing.
+        if (encryptedData.length < 28) {
+            return null;
+        }
         const sharedKey = this._deriveSharedKey(sourcePublicKey);
 
         // Attempt 1 — legacy layout: [iv(12)][ct][tag(16)].
@@ -506,11 +524,15 @@ export class NaeuralBC {
             encryptedData.slice(encryptedData.length - 16),
         );
         if (legacy !== null) {
-            return legacy.toString('utf8');
+            return NaeuralBC._strictUtf8(legacy);
         }
 
-        // Attempt 2 — flagged layout: [nonce(12)][flag(1)][ct][tag(16)].
-        // The flag byte must be 0 or 1; anything else cannot be this layout.
+        // Attempt 2 — flagged layout: [nonce(12)][flag(1)][ct][tag(16)],
+        // minimum 29 bytes. The flag byte must be 0 or 1; anything else
+        // cannot be this layout.
+        if (encryptedData.length < 29) {
+            return null;
+        }
         const flag = encryptedData[12];
         if (flag !== 0 && flag !== 1) {
             return null;
@@ -529,13 +551,34 @@ export class NaeuralBC {
             // failure means corrupt-but-authenticated data — treat as
             // undecryptable rather than throwing.
             try {
-                return zlib.inflateSync(flagged).toString('utf8');
+                return NaeuralBC._strictUtf8(zlib.inflateSync(flagged));
             } catch (e) {
                 return null;
             }
         }
 
-        return flagged.toString('utf8');
+        return NaeuralBC._strictUtf8(flagged);
+    }
+
+    /**
+     * Strict (fatal) UTF-8 decode; `null` for invalid byte sequences.
+     *
+     * The permissive `Buffer.toString('utf8')` would silently substitute
+     * U+FFFD for invalid sequences and "successfully" decode zlib-framed
+     * bytes whose unauthenticated compression flag was tampered — python
+     * peers reject the same bytes via strict `.decode()`, and this keeps
+     * both SDKs' failure behavior identical.
+     *
+     * @param {Buffer} buf authenticated plaintext bytes
+     * @return {string|null} decoded string, or null when not valid UTF-8
+     * @private
+     */
+    static _strictUtf8(buf) {
+        try {
+            return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+        } catch (e) {
+            return null;
+        }
     }
 
     /**

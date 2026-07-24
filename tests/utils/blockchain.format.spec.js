@@ -97,4 +97,37 @@ describe('NaeuralBC dual wire-format encryption', () => {
         expect(receiver.decrypt(null, senderAddress)).toBeNull();
         expect(receiver.decrypt(crypto.randomBytes(64).toString('base64'), senderAddress)).toBeNull();
     });
+
+    test('tampered compression flag (1 -> 0) is rejected, not decoded as mojibake', () => {
+        // The flag byte sits OUTSIDE GCM authentication in the reference
+        // format: flipping 1 -> 0 keeps the tag valid while the plaintext is
+        // still zlib-framed. Strict UTF-8 decoding must reject it (python
+        // parity) instead of returning replacement-character garbage.
+        const flaggedSender = new NaeuralBC({ debug: false, encryptFormat: 'flagged' });
+        const buf = Buffer.from(flaggedSender.encrypt(message, receiverAddress), 'base64');
+        expect(buf[12]).toEqual(1);
+        buf[12] = 0;
+        expect(receiver.decrypt(buf.toString('base64'), flaggedSender.getAddress())).toBeNull();
+    });
+
+    test('authenticated but non-UTF-8 plaintext is rejected (strict decoding)', () => {
+        // Hand-build a flag=0 envelope whose authenticated plaintext is an
+        // invalid UTF-8 byte sequence — permissive toString('utf8') would
+        // "succeed" with U+FFFD substitutions; the API must return null.
+        const destinationPublicKey = NaeuralBC.addressToPublicKeyObject(receiverAddress);
+        const sharedKey = sender._deriveSharedKey(destinationPublicKey);
+        const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv('aes-256-gcm', sharedKey, iv);
+        let ct = cipher.update(Buffer.from([0xff, 0xfe, 0x80, 0x81]));
+        ct = Buffer.concat([ct, cipher.final()]);
+        const blob = Buffer.concat([iv, Buffer.from([0]), ct, cipher.getAuthTag()]).toString('base64');
+
+        expect(receiver.decrypt(blob, senderAddress)).toBeNull();
+    });
+
+    test('short and boundary-length buffers return null without throwing', () => {
+        for (const len of [0, 1, 12, 13, 27, 28, 29]) {
+            expect(receiver.decrypt(Buffer.alloc(len).toString('base64'), senderAddress)).toBeNull();
+        }
+    });
 });

@@ -164,6 +164,12 @@ export type NaeuralBlockchainOptions = {
      */
     encrypt?: boolean;
     /**
+     * - Outgoing command-encryption wire layout: 'legacy' (default,
+     * historical [iv][ct][tag]) or 'flagged' (ratio1-python-parity
+     * [nonce][flag][zlib-ct+tag]); incoming decryption always tolerates both.
+     */
+    encryptFormat?: 'legacy' | 'flagged';
+    /**
      * - Indicates if the connection should be secure.
      */
     secure?: boolean;
