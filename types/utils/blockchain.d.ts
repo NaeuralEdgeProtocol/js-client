@@ -5,6 +5,7 @@
  * @property {boolean} [debug] - Indicates if debugging is enabled.
  * @property {string} [key] - The key for the blockchain.
  * @property {boolean} [encrypt] - Indicates if encryption is enabled.
+ * @property {'legacy'|'flagged'} [encryptFormat] - Outgoing command-encryption wire layout: 'legacy' (default, historical [iv][ct][tag]) or 'flagged' (ratio1-python-parity [nonce][flag][zlib-ct+tag]); incoming decryption always tolerates both.
  * @property {boolean} [secure] - Indicates if the connection should be secure.
  */
 /**
@@ -38,6 +39,34 @@ export class NaeuralBC {
     static convertECKeyPairToPEM(keyPair: any): string;
     static loadFromSecretWords(words: any): crypto.KeyObject;
     static loadFromPem(pem: any): crypto.KeyObject;
+    /**
+     * Strict (fatal) UTF-8 decode; `null` for invalid byte sequences.
+     *
+     * The permissive `Buffer.toString('utf8')` would silently substitute
+     * U+FFFD for invalid sequences and "successfully" decode zlib-framed
+     * bytes whose unauthenticated compression flag was tampered — python
+     * peers reject the same bytes via strict `.decode()`, and this keeps
+     * both SDKs' failure behavior identical.
+     *
+     * @param {Buffer} buf authenticated plaintext bytes
+     * @return {string|null} decoded string, or null when not valid UTF-8
+     * @private
+     */
+    private static _strictUtf8;
+    /**
+     * Attempts one AES-256-GCM decryption; `null` on authentication failure.
+     *
+     * Kept as a tiny static helper because decrypt() must run the same
+     * primitive against two candidate parses of the envelope.
+     *
+     * @param {Buffer} sharedKey derived AES key
+     * @param {Buffer} nonce 12-byte IV/nonce
+     * @param {Buffer} ciphertext ciphertext without the auth tag
+     * @param {Buffer} authTag 16-byte GCM tag
+     * @return {Buffer|null} decrypted bytes, or null when auth fails
+     * @private
+     */
+    private static _tryGcmDecrypt;
     /**
      * Removes the prefix from the address.
      *
@@ -77,6 +106,26 @@ export class NaeuralBC {
      * @private
      */
     private debugMode;
+    /**
+     * Outgoing command-encryption layout.
+     *
+     * 'legacy'  -> [iv(12)][ciphertext][authTag(16)] — the historical
+     *              @hyfy/jsclient layout, byte-identical to v4.1.2.
+     *              Only pre-2025 python-SDK nodes still require it.
+     * 'flagged' -> [nonce(12)][flag(1)][ciphertext+authTag] with flag=1
+     *              and zlib-deflated plaintext — parity with current
+     *              ratio1 python SDKs (ec.py _encrypt, compressed=True,
+     *              embed_compressed=True), whose decrypt() accepts ONLY
+     *              this layout (no legacy fallback as of SDK 3.5.x).
+     *
+     * Default stays 'legacy' so un-migrated fleets are unaffected; each
+     * environment flips via its BE config once its node fleet runs
+     * flag-capable SDKs. Incoming decrypt() is ALWAYS tolerant of both.
+     *
+     * @type {'legacy'|'flagged'}
+     * @private
+     */
+    private encryptFormat;
     loadIdentity(identityPrivateKey: any): boolean;
     /**
      * Returns the public key as a string.
@@ -107,8 +156,49 @@ export class NaeuralBC {
      * @return {boolean} verification result
      */
     verify(fullJSONMessage: string): boolean;
-    encrypt(message: any, destinationAddress: any): string;
-    decrypt(encryptedDataB64: any, sourceAddress: any): string;
+    /**
+     * Encrypts a message for a destination node using ECDH(secp256k1) +
+     * HKDF-derived AES-256-GCM.
+     *
+     * The wire layout depends on the engine's `encryptFormat` option (see the
+     * constructor doc): 'legacy' emits `[iv][ct][tag]` (v4.1.2-identical);
+     * 'flagged' emits the python-SDK-parity `[nonce][flag=1][zlib-ct+tag]`
+     * layout that current ratio1 nodes require.
+     *
+     * @param {string} message plaintext (typically JSON) to encrypt
+     * @param {string} destinationAddress node address the message is for
+     * @return {string} base64 encoded encrypted envelope
+     */
+    encrypt(message: string, destinationAddress: string): string;
+    /**
+     * Decrypts an incoming envelope, tolerating BOTH known wire layouts:
+     *
+     * 1. legacy  `[iv(12)][ciphertext][authTag(16)]` — historical JS peers;
+     * 2. flagged `[nonce(12)][flag(1)][ciphertext+authTag]` — current ratio1
+     *    python SDKs (flag 0 = plain utf8, flag 1 = zlib-deflated plaintext).
+     *
+     * Layout detection relies on the AES-GCM auth tag: only the correct
+     * parse authenticates (a cross-layout false positive has probability
+     * 2^-128). The legacy parse is attempted first to keep the historical
+     * hot path unchanged; on auth failure the flagged parse runs.
+     *
+     * Every decoded plaintext goes through STRICT (fatal) UTF-8 decoding,
+     * mirroring python's `.decode()`: the 1-byte compression flag sits
+     * OUTSIDE the GCM-authenticated data in the reference format, so a
+     * tampered flag (1 -> 0) leaves the tag valid while the plaintext bytes
+     * are still zlib-framed — permissive decoding would return authenticated
+     * mojibake, strict decoding rejects it to `null` exactly like the
+     * python SDK does.
+     *
+     * Returns `null` for any undecryptable, tampered, malformed, or
+     * non-UTF-8 envelope. Note: an invalid `sourceAddress` still throws
+     * (unchanged pre-existing behavior of the address parser).
+     *
+     * @param {string} encryptedDataB64 base64 encoded encrypted envelope
+     * @param {string} sourceAddress sender node address (for ECDH)
+     * @return {string|null} decrypted plaintext, or null when undecryptable
+     */
+    decrypt(encryptedDataB64: string, sourceAddress: string): string | null;
     /**
      * @return {crypto.KeyObject}
      * @private
@@ -164,9 +254,7 @@ export type NaeuralBlockchainOptions = {
      */
     encrypt?: boolean;
     /**
-     * - Outgoing command-encryption wire layout: 'legacy' (default,
-     * historical [iv][ct][tag]) or 'flagged' (ratio1-python-parity
-     * [nonce][flag][zlib-ct+tag]); incoming decryption always tolerates both.
+     * - Outgoing command-encryption wire layout: 'legacy' (default, historical [iv][ct][tag]) or 'flagged' (ratio1-python-parity [nonce][flag][zlib-ct+tag]); incoming decryption always tolerates both.
      */
     encryptFormat?: 'legacy' | 'flagged';
     /**

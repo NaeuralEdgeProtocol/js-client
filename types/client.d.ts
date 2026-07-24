@@ -354,10 +354,6 @@ export type NaeuralOptions = {
         debug: boolean;
         key: string;
         encrypt?: boolean;
-        /**
-         * Outgoing command-encryption wire layout; incoming decryption
-         * always tolerates both. See NaeuralBlockchainOptions.
-         */
         encryptFormat?: 'legacy' | 'flagged';
         secure?: boolean;
     };

@@ -13,6 +13,9 @@
  * @property {Object} blockchain - Blockchain related configurations.
  * @property {boolean} blockchain.debug - Indicates if blockchain debugging is enabled.
  * @property {string} blockchain.key - The blockchain key.
+ * @property {boolean} [blockchain.encrypt] - Indicates if outgoing node commands are encrypted.
+ * @property {'legacy'|'flagged'} [blockchain.encryptFormat] - Outgoing command-encryption wire layout: 'legacy' (default, historical [iv][ct][tag]) or 'flagged' (ratio1-python-parity [nonce][flag][zlib-ct+tag]); incoming decryption always tolerates both.
+ * @property {boolean} [blockchain.secure] - Indicates if address checks require the secure prefix.
  * @property {string} stateManager - Describes the state manager.
  * @property {string} loglevel - Describes the state manager.
  * @property {Object} redis - Redis configuration details.
