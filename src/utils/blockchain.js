@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import * as zlib from 'node:zlib';
 import asn1 from 'asn1.js/lib/asn1.js';
 import stringify from 'json-stable-stringify';
 import { base64ToUrlSafeBase64, urlSafeBase64ToBase64 } from './helper.functions.js';
@@ -94,6 +95,26 @@ export class NaeuralBC {
         }
 
         this.debugMode = options.debug || false;
+        /**
+         * Outgoing command-encryption layout.
+         *
+         * 'legacy'  -> [iv(12)][ciphertext][authTag(16)] — the historical
+         *              @hyfy/jsclient layout, byte-identical to v4.1.2.
+         *              Only pre-2025 python-SDK nodes still require it.
+         * 'flagged' -> [nonce(12)][flag(1)][ciphertext+authTag] with flag=1
+         *              and zlib-deflated plaintext — parity with current
+         *              ratio1 python SDKs (ec.py _encrypt, compressed=True,
+         *              embed_compressed=True), whose decrypt() accepts ONLY
+         *              this layout (no legacy fallback as of SDK 3.5.x).
+         *
+         * Default stays 'legacy' so un-migrated fleets are unaffected; each
+         * environment flips via its BE config once its node fleet runs
+         * flag-capable SDKs. Incoming decrypt() is ALWAYS tolerant of both.
+         *
+         * @type {'legacy'|'flagged'}
+         * @private
+         */
+        this.encryptFormat = options.encryptFormat === 'flagged' ? 'flagged' : 'legacy';
         this.compressedPublicKey = NaeuralBC.compressPublicKeyObject(this.keyPair.publicKey);
 
         if (this.debugMode) {
@@ -407,12 +428,42 @@ export class NaeuralBC {
         return signatureResult;
     }
 
+    /**
+     * Encrypts a message for a destination node using ECDH(secp256k1) +
+     * HKDF-derived AES-256-GCM.
+     *
+     * The wire layout depends on the engine's `encryptFormat` option (see the
+     * constructor doc): 'legacy' emits `[iv][ct][tag]` (v4.1.2-identical);
+     * 'flagged' emits the python-SDK-parity `[nonce][flag=1][zlib-ct+tag]`
+     * layout that current ratio1 nodes require.
+     *
+     * @param {string} message plaintext (typically JSON) to encrypt
+     * @param {string} destinationAddress node address the message is for
+     * @return {string} base64 encoded encrypted envelope
+     */
     encrypt(message, destinationAddress) {
         const destinationPublicKey = NaeuralBC.addressToPublicKeyObject(destinationAddress);
         const sharedKey = this._deriveSharedKey(destinationPublicKey);
 
         const iv = crypto.randomBytes(12);
         const cipher = crypto.createCipheriv('aes-256-gcm', sharedKey, iv);
+
+        if (this.encryptFormat === 'flagged') {
+            // Python-parity path: plaintext is zlib-deflated (RFC1950 — the
+            // exact counterpart of python `zlib.compress`) and the 1-byte
+            // compressed flag (always 1 here, mirroring ec.py) sits between
+            // the nonce and the ciphertext. The receiving python SDK reads
+            // byte 12 as this flag and inflates accordingly.
+            const deflated = zlib.deflateSync(Buffer.from(message, 'utf8'));
+            let encrypted = cipher.update(deflated);
+            encrypted = Buffer.concat([encrypted, cipher.final()]);
+            const flagByte = Buffer.from([1]);
+
+            return Buffer.concat([iv, flagByte, encrypted, cipher.getAuthTag()]).toString('base64');
+        }
+
+        // Legacy path — byte-identical to every previous @hyfy/jsclient
+        // release: no flag byte, plaintext uncompressed.
         let encrypted = cipher.update(message, 'utf8');
         encrypted = Buffer.concat([encrypted, cipher.final()]);
 
@@ -421,6 +472,23 @@ export class NaeuralBC {
         return encryptedData.toString('base64');
     }
 
+    /**
+     * Decrypts an incoming envelope, tolerating BOTH known wire layouts:
+     *
+     * 1. legacy  `[iv(12)][ciphertext][authTag(16)]` — historical JS peers;
+     * 2. flagged `[nonce(12)][flag(1)][ciphertext+authTag]` — current ratio1
+     *    python SDKs (flag 0 = plain utf8, flag 1 = zlib-deflated plaintext).
+     *
+     * Layout detection relies on the AES-GCM auth tag: only the correct
+     * parse authenticates (a cross-layout false positive has probability
+     * 2^-128). The legacy parse is attempted first to keep the historical
+     * hot path unchanged; on auth failure the flagged parse runs. Returns
+     * `null` on any failure — same contract as before, never throws.
+     *
+     * @param {string} encryptedDataB64 base64 encoded encrypted envelope
+     * @param {string} sourceAddress sender node address (for ECDH)
+     * @return {string|null} decrypted plaintext, or null when undecryptable
+     */
     decrypt(encryptedDataB64, sourceAddress) {
         if (encryptedDataB64 === null) {
             return null;
@@ -428,24 +496,69 @@ export class NaeuralBC {
 
         const sourcePublicKey = NaeuralBC.addressToPublicKeyObject(sourceAddress);
         const encryptedData = Buffer.from(encryptedDataB64, 'base64');
-
-        // Extract nonce and ciphertext
-        const nonce = encryptedData.slice(0, 12);
-        const ciphertext = encryptedData.slice(12, encryptedData.length - 16);
-        const authTag = encryptedData.slice(encryptedData.length - 16);
-
-        // Derive shared key
         const sharedKey = this._deriveSharedKey(sourcePublicKey);
 
-        // AES-GCM Decryption
-        const decipher = crypto.createDecipheriv('aes-256-gcm', sharedKey, nonce);
-        decipher.setAuthTag(authTag);
-        let decrypted = decipher.update(ciphertext);
+        // Attempt 1 — legacy layout: [iv(12)][ct][tag(16)].
+        const legacy = NaeuralBC._tryGcmDecrypt(
+            sharedKey,
+            encryptedData.slice(0, 12),
+            encryptedData.slice(12, encryptedData.length - 16),
+            encryptedData.slice(encryptedData.length - 16),
+        );
+        if (legacy !== null) {
+            return legacy.toString('utf8');
+        }
 
+        // Attempt 2 — flagged layout: [nonce(12)][flag(1)][ct][tag(16)].
+        // The flag byte must be 0 or 1; anything else cannot be this layout.
+        const flag = encryptedData[12];
+        if (flag !== 0 && flag !== 1) {
+            return null;
+        }
+        const flagged = NaeuralBC._tryGcmDecrypt(
+            sharedKey,
+            encryptedData.slice(0, 12),
+            encryptedData.slice(13, encryptedData.length - 16),
+            encryptedData.slice(encryptedData.length - 16),
+        );
+        if (flagged === null) {
+            return null;
+        }
+        if (flag === 1) {
+            // Python peers always deflate (ec.py: compressed=True); inflate
+            // failure means corrupt-but-authenticated data — treat as
+            // undecryptable rather than throwing.
+            try {
+                return zlib.inflateSync(flagged).toString('utf8');
+            } catch (e) {
+                return null;
+            }
+        }
+
+        return flagged.toString('utf8');
+    }
+
+    /**
+     * Attempts one AES-256-GCM decryption; `null` on authentication failure.
+     *
+     * Kept as a tiny static helper because decrypt() must run the same
+     * primitive against two candidate parses of the envelope.
+     *
+     * @param {Buffer} sharedKey derived AES key
+     * @param {Buffer} nonce 12-byte IV/nonce
+     * @param {Buffer} ciphertext ciphertext without the auth tag
+     * @param {Buffer} authTag 16-byte GCM tag
+     * @return {Buffer|null} decrypted bytes, or null when auth fails
+     * @private
+     */
+    static _tryGcmDecrypt(sharedKey, nonce, ciphertext, authTag) {
         try {
+            const decipher = crypto.createDecipheriv('aes-256-gcm', sharedKey, nonce);
+            decipher.setAuthTag(authTag);
+            let decrypted = decipher.update(ciphertext);
             decrypted = Buffer.concat([decrypted, decipher.final()]);
 
-            return decrypted.toString('utf8');
+            return decrypted;
         } catch (e) {
             return null;
         }
@@ -550,7 +663,15 @@ export class NaeuralBC {
      */
     _deriveSharedKey(peerPublicKey) {
         const ecdh = crypto.createECDH('secp256k1');
-        const privateKeyHex = NaeuralBC.privateKeyObjectToECKeyPair(this.keyPair.privateKey).getPrivate().toString(16);
+        // The scalar MUST be zero-padded to 32 bytes (64 hex chars): BN's
+        // toString(16) drops leading zeros, and an odd-length hex string
+        // makes Buffer.from(hex) silently discard the final nibble —
+        // truncating the private scalar for ~1/16 of keys and deriving a
+        // garbage ECDH shared key that no correct peer can ever match.
+        const privateKeyHex = NaeuralBC.privateKeyObjectToECKeyPair(this.keyPair.privateKey)
+            .getPrivate()
+            .toString(16)
+            .padStart(64, '0');
         ecdh.setPrivateKey(Buffer.from(privateKeyHex, 'hex'));
 
         const publicKeyHex = NaeuralBC.publicKeyObjectToECKeyPair(peerPublicKey).getPublic('hex');
