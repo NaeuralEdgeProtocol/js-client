@@ -300,12 +300,17 @@ describe('State class tests', () => {
                 EE_ID: 'network1',
                 EE_SENDER: '0xai_network_super',
                 TIMESTAMP_EXECUTION: '2023-01-01T00:00:00Z',
+                EE_TIMEZONE: 'UTC+0',
+                EE_TZ: 'Etc/UTC',
             };
             const expectedUpdate = {
                 name: mockData.EE_ID,
                 address: '0xai_network_super',
                 status: mockData.CURRENT_NETWORK,
                 timestamp: mockData.TIMESTAMP_EXECUTION,
+                timestampUtc: '2023-01-01T00:00:00.000Z',
+                timezone: mockData.EE_TIMEZONE,
+                timezoneName: mockData.EE_TZ,
             };
 
             mockManager.updateNetworkSnapshot.mockResolvedValue(true);
@@ -314,6 +319,64 @@ describe('State class tests', () => {
 
             expect(mockManager.updateNetworkSnapshot).toHaveBeenCalledWith(mockData.EE_SENDER, expectedUpdate);
             expect(result).toBe(true);
+        });
+
+        test.each([
+            ['UTC', '2026-07-24 12:49:49.192027', '2026-07-24T12:49:49.192Z'],
+            ['UTC+3', '2026-07-24 12:49:49.192027', '2026-07-24T09:49:49.192Z'],
+            ['UTC-5', '2026-01-24 12:49:49.192027', '2026-01-24T17:49:49.192Z'],
+            [undefined, '2026-07-24T12:49:49.192027+03:00', '2026-07-24T09:49:49.192Z'],
+        ])('normalizes a NET_MON timestamp using %s', async (timezone, timestamp, expectedTimestampUtc) => {
+            const mockData = {
+                CURRENT_NETWORK: {
+                    node1: { online: true },
+                },
+                EE_ID: 'network1',
+                EE_SENDER: '0xai_network_super',
+                EE_TIMEZONE: timezone,
+                EE_TZ: 'Europe/Bucharest',
+                TIMESTAMP_EXECUTION: timestamp,
+            };
+
+            await state.storeNetworkInfo(mockData);
+
+            expect(mockManager.updateNetworkSnapshot).toHaveBeenCalledWith(
+                mockData.EE_SENDER,
+                expect.objectContaining({
+                    timestamp,
+                    timestampUtc: expectedTimestampUtc,
+                    timezone: timezone ?? null,
+                    timezoneName: mockData.EE_TZ,
+                }),
+            );
+        });
+
+        test.each([
+            ['invalid offset', '2026-07-24 12:49:49.192027', 'Europe/Bucharest'],
+            ['invalid calendar date', '2026-02-30 12:49:49.192027', 'UTC+2'],
+            ['invalid offset-bearing calendar date', '2026-02-30T12:49:49.192027Z', undefined],
+            ['conflicting embedded offset', '2026-07-24T12:49:49.192027+03:00', 'UTC+2'],
+            ['missing offset', '2026-07-24 12:49:49.192027', undefined],
+        ])('does not fabricate UTC time for an %s', async (_case, timestamp, timezone) => {
+            const mockData = {
+                CURRENT_NETWORK: {
+                    node1: { online: true },
+                },
+                EE_ID: 'network1',
+                EE_SENDER: '0xai_network_super',
+                EE_TIMEZONE: timezone,
+                TIMESTAMP_EXECUTION: timestamp,
+            };
+
+            await state.storeNetworkInfo(mockData);
+
+            expect(mockManager.updateNetworkSnapshot).toHaveBeenCalledWith(
+                mockData.EE_SENDER,
+                expect.objectContaining({
+                    timestamp,
+                    timestampUtc: null,
+                }),
+            );
         });
 
         test('does not store network information if CURRENT_NETWORK is empty or not present', async () => {
@@ -364,8 +427,18 @@ describe('State class tests', () => {
             const supervisorNames = ['supervisor1', 'supervisor2'];
             const now = new Date();
             const mockNetworkStatuses = [
-                { name: 'supervisor1', status: [1, 2], timestamp: new Date(now.getTime() - 10000).toISOString() },
-                { name: 'supervisor2', status: [1, 2, 3], timestamp: now.toISOString() },
+                {
+                    name: 'supervisor1',
+                    status: [1, 2],
+                    timestamp: new Date(now.getTime() - 10000).toISOString(),
+                    timestampUtc: new Date(now.getTime() - 10000).toISOString(),
+                },
+                {
+                    name: 'supervisor2',
+                    status: [1, 2, 3],
+                    timestamp: now.toISOString(),
+                    timestampUtc: now.toISOString(),
+                },
             ];
             mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
             mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>
@@ -381,9 +454,24 @@ describe('State class tests', () => {
             const supervisorNames = ['supervisor1', 'supervisor2', 'supervisor3'];
             const now = new Date();
             const mockNetworkStatuses = [
-                { name: 'supervisor1', status: [1, 2, 3, 4], timestamp: new Date(now.getTime() - 35000).toISOString() },
-                { name: 'supervisor2', status: [1, 2], timestamp: now.toISOString() },
-                { name: 'supervisor3', status: [1, 2, 3], timestamp: now.toISOString() },
+                {
+                    name: 'supervisor1',
+                    status: [1, 2, 3, 4],
+                    timestamp: new Date(now.getTime() - 35000).toISOString(),
+                    timestampUtc: new Date(now.getTime() - 35000).toISOString(),
+                },
+                {
+                    name: 'supervisor2',
+                    status: [1, 2],
+                    timestamp: now.toISOString(),
+                    timestampUtc: now.toISOString(),
+                },
+                {
+                    name: 'supervisor3',
+                    status: [1, 2, 3],
+                    timestamp: now.toISOString(),
+                    timestampUtc: now.toISOString(),
+                },
             ];
             mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
             mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>
@@ -395,13 +483,181 @@ describe('State class tests', () => {
             expect(networkStatus).toEqual(mockNetworkStatuses[2]);
         });
 
+        test('uses normalized UTC time instead of local wall time when selecting a fresh supervisor', async () => {
+            const now = Date.now();
+            const supervisorNames = ['large-stale-supervisor', 'smaller-fresh-supervisor'];
+            const mockNetworkStatuses = [
+                {
+                    name: supervisorNames[0],
+                    status: [1, 2, 3, 4],
+                    timestamp: new Date(now + 3 * 60 * 60 * 1000).toISOString().replace('Z', ''),
+                    timestampUtc: new Date(now - 35_000).toISOString(),
+                },
+                {
+                    name: supervisorNames[1],
+                    status: [1, 2, 3],
+                    timestamp: new Date(now + 3 * 60 * 60 * 1000).toISOString().replace('Z', ''),
+                    timestampUtc: new Date(now).toISOString(),
+                },
+            ];
+            mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
+            mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>
+                Promise.resolve(mockNetworkStatuses.find((status) => status.name === supervisorId)),
+            );
+
+            const networkStatus = await state.getNetworkStatus();
+
+            expect(networkStatus).toEqual(mockNetworkStatuses[1]);
+        });
+
+        test('does not let a legacy local timestamp outrank a normalized snapshot during rolling deployment', async () => {
+            const now = Date.now();
+            const supervisorNames = ['legacy-supervisor', 'normalized-supervisor'];
+            const mockNetworkStatuses = [
+                {
+                    name: supervisorNames[0],
+                    status: [1, 2, 3, 4],
+                    timestamp: new Date(now + 3 * 60 * 60 * 1000).toISOString().replace('Z', ''),
+                },
+                {
+                    name: supervisorNames[1],
+                    status: [1, 2, 3],
+                    timestamp: new Date(now + 3 * 60 * 60 * 1000).toISOString().replace('Z', ''),
+                    timestampUtc: new Date(now).toISOString(),
+                },
+            ];
+            mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
+            mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>
+                Promise.resolve(mockNetworkStatuses.find((status) => status.name === supervisorId)),
+            );
+
+            const networkStatus = await state.getNetworkStatus();
+
+            expect(networkStatus).toEqual(mockNetworkStatuses[1]);
+        });
+
+        test('does not treat a normalized timestamp beyond future-skew tolerance as fresh', async () => {
+            const now = Date.now();
+            const supervisorNames = ['future-supervisor', 'fresh-supervisor'];
+            const mockNetworkStatuses = [
+                {
+                    name: supervisorNames[0],
+                    status: [1, 2, 3, 4],
+                    timestamp: new Date(now).toISOString(),
+                    timestampUtc: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+                },
+                {
+                    name: supervisorNames[1],
+                    status: [1, 2, 3],
+                    timestamp: new Date(now).toISOString(),
+                    timestampUtc: new Date(now).toISOString(),
+                },
+            ];
+            mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
+            mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>
+                Promise.resolve(mockNetworkStatuses.find((status) => status.name === supervisorId)),
+            );
+
+            const networkStatus = await state.getNetworkStatus();
+
+            expect(networkStatus).toEqual(mockNetworkStatuses[1]);
+        });
+
+        test('falls back to a legacy snapshot instead of a rejected future snapshot', async () => {
+            const now = Date.now();
+            const supervisorNames = ['future-supervisor', 'legacy-supervisor'];
+            const mockNetworkStatuses = [
+                {
+                    name: supervisorNames[0],
+                    status: [1, 2, 3, 4],
+                    timestamp: new Date(now).toISOString(),
+                    timestampUtc: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+                },
+                {
+                    name: supervisorNames[1],
+                    status: [1, 2, 3],
+                    timestamp: new Date(now).toISOString(),
+                },
+            ];
+            mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
+            mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>
+                Promise.resolve(mockNetworkStatuses.find((status) => status.name === supervisorId)),
+            );
+
+            const networkStatus = await state.getNetworkStatus();
+
+            expect(networkStatus).toEqual(mockNetworkStatuses[1]);
+        });
+
+        test('returns null when every normalized snapshot exceeds future-skew tolerance', async () => {
+            const now = Date.now();
+            const supervisorNames = ['future-supervisor'];
+            const mockNetworkStatuses = [
+                {
+                    name: supervisorNames[0],
+                    status: [1, 2, 3, 4],
+                    timestamp: new Date(now).toISOString(),
+                    timestampUtc: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+                },
+            ];
+            mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
+            mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>
+                Promise.resolve(mockNetworkStatuses.find((status) => status.name === supervisorId)),
+            );
+
+            const networkStatus = await state.getNetworkStatus();
+
+            expect(networkStatus).toBeNull();
+        });
+
+        test('returns a real supervisor snapshot when every normalized timestamp is invalid', async () => {
+            const supervisorNames = ['larger-supervisor', 'smaller-supervisor'];
+            const mockNetworkStatuses = [
+                {
+                    name: supervisorNames[0],
+                    status: [1, 2, 3, 4],
+                    timestamp: '2026-07-24 12:49:49.192027',
+                    timestampUtc: null,
+                },
+                {
+                    name: supervisorNames[1],
+                    status: [1, 2, 3],
+                    timestamp: '2026-07-24 12:49:48.192027',
+                    timestampUtc: null,
+                },
+            ];
+            mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
+            mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>
+                Promise.resolve(mockNetworkStatuses.find((status) => status.name === supervisorId)),
+            );
+
+            const networkStatus = await state.getNetworkStatus();
+
+            expect(networkStatus).toEqual(mockNetworkStatuses[0]);
+        });
+
         test('aggregates network statuses and returns the most recent, if all info is older than 30s', async () => {
             const supervisorNames = ['supervisor1', 'supervisor2', 'supervisor3'];
             const now = new Date();
             const mockNetworkStatuses = [
-                { name: 'supervisor1', status: [1, 2, 3, 4], timestamp: new Date(now.getTime() - 35000).toISOString() },
-                { name: 'supervisor2', status: [1, 2], timestamp: new Date(now.getTime() - 31000).toISOString() },
-                { name: 'supervisor3', status: [1, 2, 3], timestamp: new Date(now.getTime() - 33000).toISOString() },
+                {
+                    name: 'supervisor1',
+                    status: [1, 2, 3, 4],
+                    timestamp: new Date(now.getTime() - 35000).toISOString(),
+                    timestampUtc: new Date(now.getTime() - 35000).toISOString(),
+                },
+                {
+                    name: 'supervisor2',
+                    status: [1, 2],
+                    timestamp: new Date(now.getTime() - 31000).toISOString(),
+                    timestampUtc: new Date(now.getTime() - 31000).toISOString(),
+                },
+                {
+                    name: 'supervisor3',
+                    status: [1, 2, 3],
+                    timestamp: new Date(now.getTime() - 33000).toISOString(),
+                    timestampUtc: new Date(now.getTime() - 33000).toISOString(),
+                },
             ];
             mockManager.getNetworkSupervisors.mockResolvedValue(supervisorNames);
             mockManager.getNetworkSnapshot.mockImplementation((supervisorId) =>

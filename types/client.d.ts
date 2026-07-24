@@ -232,9 +232,9 @@ export class Naeural extends EventEmitter2 {
      * If `supervisor` is null, it returns the latest information received.
      *
      * @param supervisor
-     * @return {Promise<Object>}
+     * @return {Promise<NetworkStatusSnapshot|null>}
      */
-    getNetworkStatus(supervisor?: any): Promise<any>;
+    getNetworkStatus(supervisor?: any): Promise<NetworkStatusSnapshot | null>;
     /**
      * Get the list of network supervisors.
      *
@@ -337,6 +337,7 @@ export class Naeural extends EventEmitter2 {
 export type AlertedNodes = {
     [x: string]: number;
 };
+export type NetworkStatusSnapshot = import('./models/state.js').NetworkStatusSnapshot;
 export type NaeuralOptions = {
     /**
      * - the EventEmitter2 setup

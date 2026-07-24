@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import { Buffer } from 'node:buffer';
+import { setImmediate } from 'node:timers/promises';
 import {
     ALL_EDGE_NODES,
     INTERNAL_STATE_MANAGER,
     MESSAGE_TYPE_PAYLOAD,
+    MESSAGE_TYPE_SUPERVISOR_STATUS,
     THREAD_COMMAND_MEMORY_USAGE,
     THREAD_COMMAND_UPDATE_STATE,
     THREAD_TYPE_PAYLOADS,
@@ -76,6 +78,50 @@ afterEach(() => {
 });
 
 describe('Message Thread Comms Diagnostics', () => {
+    test('forwards NET_MON timezone metadata to the main-thread state projection', async () => {
+        const { thread } = makeThread();
+        trackedThreads.push(thread);
+        thread.mainThread = {
+            postMessage: jest.fn(),
+        };
+        thread._messageHasKnownFormat = jest.fn(() => true);
+        thread._decodeToInternalFormat = jest.fn().mockResolvedValue({
+            EE_PAYLOAD_PATH: ['0xai_supervisor', 'admin_pipeline', 'NET_MON_01', 'net-mon-01'],
+            EE_SENDER: '0xai_supervisor',
+            EE_TIMEZONE: 'UTC+3',
+            EE_TZ: 'Europe/Bucharest',
+            DATA: {
+                SIGNATURE: 'NET_MON_01',
+                EE_ID: 'supervisor',
+                TIMESTAMP_EXECUTION: '2026-07-24 12:49:49.192027',
+                CURRENT_NETWORK: {
+                    node1: {
+                        address: '0xai_node1',
+                        working: 'ONLINE',
+                    },
+                },
+            },
+        });
+
+        thread._processSupervisorPayload({
+            EE_FORMATTER: 'raw',
+            EE_PAYLOAD_PATH: ['0xai_supervisor', 'admin_pipeline', 'NET_MON_01', 'net-mon-01'],
+        });
+        await setImmediate();
+
+        expect(thread.mainThread.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: MESSAGE_TYPE_SUPERVISOR_STATUS,
+                data: expect.objectContaining({
+                    EE_SENDER: '0xai_supervisor',
+                    EE_TIMEZONE: 'UTC+3',
+                    EE_TZ: 'Europe/Bucharest',
+                    TIMESTAMP_EXECUTION: '2026-07-24 12:49:49.192027',
+                }),
+            }),
+        );
+    });
+
     test('secure=false bypasses signature verification gate', () => {
         const { thread } = makeThread({
             config: {

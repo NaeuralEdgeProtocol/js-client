@@ -3,6 +3,10 @@
  */
 
 /**
+ * @typedef {import('./models/state.js').NetworkStatusSnapshot} NetworkStatusSnapshot
+ */
+
+/**
  * @typedef {Object} NaeuralOptions
  * @property {any} emitterOptions - the EventEmitter2 setup
  * @property {any} initiator - The initiator of the configuration.
@@ -964,7 +968,7 @@ export class Naeural extends EventEmitter2 {
      * If `supervisor` is null, it returns the latest information received.
      *
      * @param supervisor
-     * @return {Promise<Object>}
+     * @return {Promise<NetworkStatusSnapshot|null>}
      */
     async getNetworkStatus(supervisor = null) {
         return this.state.getNetworkStatus(supervisor);

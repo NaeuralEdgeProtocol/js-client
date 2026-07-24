@@ -23,6 +23,148 @@ import EventEmitter2 from 'eventemitter2';
  */
 
 /**
+ * @typedef {Object} NetworkStatusSnapshot
+ * @property {string|null} [name] Supervisor name.
+ * @property {string|null} [address] Supervisor address.
+ * @property {Object.<string, Object>} status Node status map.
+ * @property {string} timestamp Original E2 local wall-clock timestamp.
+ * @property {string|null} [timestampUtc] Normalized UTC instant.
+ * @property {string|null} [timezone] E2 UTC-offset label.
+ * @property {string|null} [timezoneName] E2 IANA timezone name.
+ */
+
+const NETWORK_TIMESTAMP_PATTERN =
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(?:(Z)|([+-])(\d{2}):?(\d{2}))?$/i;
+const NETWORK_UTC_OFFSET_PATTERN = /^UTC(?:([+-])(\d{1,2})(?::?(\d{2}))?)?$/i;
+const MILLISECONDS_PER_MINUTE = 60_000;
+const NETWORK_STATUS_FRESHNESS_MS = 30_000;
+const NETWORK_STATUS_MAX_FUTURE_SKEW_MS = 30_000;
+
+/**
+ * Parses the E2 `UTC+N` offset contract into signed minutes.
+ *
+ * @param {unknown} timezone
+ * @return {number|null}
+ */
+const parseNetworkUtcOffset = (timezone) => {
+    if (typeof timezone !== 'string') {
+        return null;
+    }
+
+    const offsetMatch = NETWORK_UTC_OFFSET_PATTERN.exec(timezone);
+    if (!offsetMatch) {
+        return null;
+    }
+
+    const offsetHours = Number(offsetMatch[2] ?? 0);
+    const offsetMinutes = Number(offsetMatch[3] ?? 0);
+    if (offsetHours > 14 || offsetMinutes > 59 || (offsetHours === 14 && offsetMinutes !== 0)) {
+        return null;
+    }
+
+    const offsetDirection = offsetMatch[1] === '-' ? -1 : 1;
+    return offsetDirection * (offsetHours * 60 + offsetMinutes);
+};
+
+/**
+ * Converts a NET_MON local wall-clock timestamp and its explicit UTC offset to
+ * an ISO-8601 UTC instant. Existing timestamps that already carry an offset
+ * remain supported. Invalid or incomplete inputs return `null` so callers do
+ * not silently assign the SDK process timezone.
+ *
+ * @param {unknown} timestamp Local NET_MON execution timestamp.
+ * @param {unknown} timezone E2 offset such as `UTC+3` or `UTC-5`.
+ * @return {string|null}
+ */
+const normalizeNetworkTimestampToUtc = (timestamp, timezone) => {
+    if (typeof timestamp !== 'string') {
+        return null;
+    }
+
+    const timestampMatch = NETWORK_TIMESTAMP_PATTERN.exec(timestamp);
+    if (!timestampMatch) {
+        return null;
+    }
+
+    const [
+        ,
+        yearText,
+        monthText,
+        dayText,
+        hourText,
+        minuteText,
+        secondText,
+        fractionText = '',
+        utcDesignator,
+        explicitOffsetSign,
+        explicitOffsetHours,
+        explicitOffsetMinutes,
+    ] = timestampMatch;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    const hour = Number(hourText);
+    const minute = Number(minuteText);
+    const second = Number(secondText);
+    const millisecond = Number(fractionText.padEnd(3, '0').slice(0, 3));
+
+    let totalOffsetMinutes = 0;
+    if (!utcDesignator && explicitOffsetSign) {
+        const offsetHours = Number(explicitOffsetHours);
+        const offsetMinutes = Number(explicitOffsetMinutes);
+        if (offsetHours > 14 || offsetMinutes > 59 || (offsetHours === 14 && offsetMinutes !== 0)) {
+            return null;
+        }
+
+        const offsetDirection = explicitOffsetSign === '-' ? -1 : 1;
+        totalOffsetMinutes = offsetDirection * (offsetHours * 60 + offsetMinutes);
+    } else if (!utcDesignator) {
+        const metadataOffsetMinutes = parseNetworkUtcOffset(timezone);
+        if (metadataOffsetMinutes === null) {
+            return null;
+        }
+        totalOffsetMinutes = metadataOffsetMinutes;
+    }
+
+    if (typeof timezone === 'string' && parseNetworkUtcOffset(timezone) !== totalOffsetMinutes) {
+        return null;
+    }
+
+    if (year < 1000) {
+        return null;
+    }
+
+    const localWallClockAsUtc = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+    const validatedLocalTime = new Date(localWallClockAsUtc);
+    if (
+        validatedLocalTime.getUTCFullYear() !== year ||
+        validatedLocalTime.getUTCMonth() !== month - 1 ||
+        validatedLocalTime.getUTCDate() !== day ||
+        validatedLocalTime.getUTCHours() !== hour ||
+        validatedLocalTime.getUTCMinutes() !== minute ||
+        validatedLocalTime.getUTCSeconds() !== second
+    ) {
+        return null;
+    }
+
+    return new Date(localWallClockAsUtc - totalOffsetMinutes * MILLISECONDS_PER_MINUTE).toISOString();
+};
+
+/**
+ * Returns the comparable instant for a cached supervisor snapshot.
+ *
+ * Only normalized instants participate in freshness and ordering. Legacy
+ * snapshots remain returnable as shape-compatible fallbacks, but their local
+ * wall-clock strings cannot outrank a normalized snapshot.
+ *
+ * @param {Object} snapshot
+ * @return {number}
+ */
+const getNetworkSnapshotTime = (snapshot) => {
+    return typeof snapshot.timestampUtc === 'string' ? Date.parse(snapshot.timestampUtc) : Number.NaN;
+};
+
+/**
  * @extends EventEmitter2
  *
  * This is the model handling the state operations. It leverages either the {InternalStateManager} or the
@@ -387,6 +529,9 @@ export class State extends EventEmitter2 {
     /**
      * Store the network snapshot as provided by the network supervisor.
      *
+     * The original local timestamp remains available for compatibility, while
+     * `timestampUtc` is the only value suitable for cross-timezone ordering.
+     *
      * @param {Object} data
      * @return {Promise<boolean>}
      */
@@ -398,6 +543,9 @@ export class State extends EventEmitter2 {
                 address: data.EE_SENDER,
                 status: data.CURRENT_NETWORK,
                 timestamp: data.TIMESTAMP_EXECUTION,
+                timestampUtc: normalizeNetworkTimestampToUtc(data.TIMESTAMP_EXECUTION, data.EE_TIMEZONE),
+                timezone: data.EE_TIMEZONE ?? null,
+                timezoneName: data.EE_TZ ?? null,
             };
 
             return this.manager.updateNetworkSnapshot(data.EE_SENDER, update);
@@ -417,7 +565,7 @@ export class State extends EventEmitter2 {
      * Returns the network as seen by the `supervisor` node.
      *
      * @param {string} supervisor
-     * @return {Promise<Object>}
+     * @return {Promise<NetworkStatusSnapshot|null>}
      */
     async getNetworkStatus(supervisor = null) {
         if (supervisor) {
@@ -445,22 +593,36 @@ export class State extends EventEmitter2 {
             return entriesB - entriesA;
         });
 
-        let mostRecent = {
-            timestamp: '2004-04-24 10:33:37.082124',
-        };
-        // Search for the most recent (less than 30s) data
+        let mostRecent = null;
+        let mostRecentTime = Number.NaN;
+        let legacyFallback = null;
+        const now = new Date().getTime();
+        // Prefer the largest normalized snapshot inside the freshness window.
         for (let i = 0; i < supervisors.length; i++) {
-            if (Date.parse(mostRecent.timestamp) - Date.parse(supervisors[i].timestamp) < 0) {
-                mostRecent = supervisors[i];
+            const supervisorTime = getNetworkSnapshotTime(supervisors[i]);
+            if (!Number.isFinite(supervisorTime)) {
+                legacyFallback ??= supervisors[i];
+                continue;
             }
 
-            if ((new Date().getTime() - Date.parse(mostRecent.timestamp)) / 1000 < 30) {
-                return mostRecent;
+            const age = now - supervisorTime;
+            if (age < -NETWORK_STATUS_MAX_FUTURE_SKEW_MS) {
+                continue;
+            }
+
+            if (age <= NETWORK_STATUS_FRESHNESS_MS) {
+                return supervisors[i];
+            }
+
+            if (!Number.isFinite(mostRecentTime) || mostRecentTime < supervisorTime) {
+                mostRecent = supervisors[i];
+                mostRecentTime = supervisorTime;
             }
         }
 
-        // all are older than 30s, return the freshest
-        return mostRecent;
+        // Return the freshest trusted snapshot, or a real legacy snapshot when
+        // no normalized instant is available yet during a rolling deployment.
+        return mostRecent ?? legacyFallback;
     }
 
     /**

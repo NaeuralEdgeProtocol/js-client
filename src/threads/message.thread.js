@@ -1369,7 +1369,12 @@ export class Thread extends EventEmitter2 {
                             type: MESSAGE_TYPE_SUPERVISOR_STATUS,
                             success: true,
                             error: null,
-                            data: { ...decoded.DATA, EE_SENDER: decoded.EE_SENDER },
+                            data: {
+                                ...decoded.DATA,
+                                EE_SENDER: decoded.EE_SENDER,
+                                EE_TIMEZONE: decoded.EE_TIMEZONE,
+                                EE_TZ: decoded.EE_TZ,
+                            },
                         });
 
                         Object.keys(decoded.DATA.CURRENT_NETWORK ?? {}).forEach((nodeName) => {

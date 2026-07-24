@@ -1,10 +1,4 @@
 /**
- * @typedef {Object.<string, number>} ObservedNodes
- */
-/**
- * @typedef {{name: string, status: { online: boolean, lastSeen: Date}}} NodeStatus
- */
-/**
  * @extends EventEmitter2
  *
  * This is the model handling the state operations. It leverages either the {InternalStateManager} or the
@@ -194,6 +188,9 @@ export class State extends EventEmitter2 {
     /**
      * Store the network snapshot as provided by the network supervisor.
      *
+     * The original local timestamp remains available for compatibility, while
+     * `timestampUtc` is the only value suitable for cross-timezone ordering.
+     *
      * @param {Object} data
      * @return {Promise<boolean>}
      */
@@ -208,9 +205,9 @@ export class State extends EventEmitter2 {
      * Returns the network as seen by the `supervisor` node.
      *
      * @param {string} supervisor
-     * @return {Promise<Object>}
+     * @return {Promise<NetworkStatusSnapshot|null>}
      */
-    getNetworkStatus(supervisor?: string): Promise<any>;
+    getNetworkStatus(supervisor?: string): Promise<NetworkStatusSnapshot | null>;
     /**
      * Registers a thread into the InternalStateManager if that is the state manager loaded.
      *
@@ -269,5 +266,37 @@ export type NodeStatus = {
         online: boolean;
         lastSeen: Date;
     };
+};
+export type NetworkStatusSnapshot = {
+    /**
+     * Supervisor name.
+     */
+    name?: string | null;
+    /**
+     * Supervisor address.
+     */
+    address?: string | null;
+    /**
+     * Node status map.
+     */
+    status: {
+        [x: string]: any;
+    };
+    /**
+     * Original E2 local wall-clock timestamp.
+     */
+    timestamp: string;
+    /**
+     * Normalized UTC instant.
+     */
+    timestampUtc?: string | null;
+    /**
+     * E2 UTC-offset label.
+     */
+    timezone?: string | null;
+    /**
+     * E2 IANA timezone name.
+     */
+    timezoneName?: string | null;
 };
 import EventEmitter2 from 'eventemitter2';
